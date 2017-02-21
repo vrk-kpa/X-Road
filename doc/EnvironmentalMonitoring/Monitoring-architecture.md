@@ -1,6 +1,6 @@
 # X-Road: Environmental Monitoring Architecture
 
-Version: 1.2  
+Version: 1.3  
 Doc. ID: ARC-ENVMON
 
 | Date       | Version     | Description                                                                  | Author             |
@@ -8,6 +8,7 @@ Doc. ID: ARC-ENVMON
 | 15.12.2015 | 1.0       | Initial version               | Ilkka Seppälä         |
 | 04.01.2017 | 1.1       | Fix documentation links | Ilkka Seppälä         |
 | 20.01.2017 | 1.2       | Added license text, table of contents and version history | Sami Kallio |
+| 1.3.2017 | 1.3       | Added reference to the Security Server targeting extension and moved the modified X-Road protocol detais there | Sami Kallio |
 
 ## Table of Contents
 <!-- toc -->
@@ -50,6 +51,7 @@ This document describes environmental monitoring architecture.
 | PR-GCONF      | Cybernetica AS. X-Road: Protocol for Downloading Configuration |
 | UC-GCONF      | Cybernetica AS. X-Road: Use Case Model for Global Configuration Distribution|
 | PR-MESS | Cybernetica AS.X-Road: Message Protocol v4.0      |
+| PR-TARGETSS | Security Server targeting extension for the X-Road message protocol |
 
 # Components
 
