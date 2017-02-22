@@ -11,19 +11,17 @@ Doc. ID: PR-TARGETSS
 ## Table of Contents
 <!-- toc -->
 
-  * [License](#license)
-  * [Overview](#overview)
-  * [References](#references)
-- [Components](#components)
-  * [Monitoring metaservice (proxymonitor add-on)](#monitoring-metaservice-proxymonitor-add-on)
-  * [Monitoring service (xroad-monitor)](#monitoring-service-xroad-monitor)
-  * [Central monitoring client](#central-monitoring-client)
-  * [Central monitoring data collector](#central-monitoring-data-collector)
-  * [Central server admin user interface](#central-server-admin-user-interface)
-- [Monitoring in action](#monitoring-in-action)
-  * [Pull messaging model](#pull-messaging-model)
-  * [Modified X-Road message protocol](#modified-x-road-message-protocol)
-  * [Access control](#access-control)
+- [License](#license)
+- [Introduction](#introduction)
+- [Format of messages](#format-of-messages)
+  * [Schema header](#schema-header)
+  * [Added `securityServer` element](#added-securityserver-element)
+  * [Message headers](#message-headers)
+- [XML Schema xroad.securityserver.xsd](#xml-schema-xroad.securityserver.xsd)
+- [Example](#example)
+- [Request](#request)
+- [Response](#response)
+
 
 <!-- tocstop -->
 
@@ -40,29 +38,36 @@ The original X-Road 4.0 message protool (PS-MESS) has the SOAP header element _s
 In a clustered security server configuration, one service can be served from multiple security servers. When X-Road routes the message to such a service,
 it picks the target security server based on which server establishes a connection the quickest.
 There is no guarantee about the actual target server, it can be any of the clustered servers. There are use cases,
-like environmental monitoring (ARC-ENVMON), where targeting of a specific security server is needed.
+like environmental monitoring (ARC-ENVMON), where targeting of a specific security server is neded.
 
 ## Format of messages
 
-### Target security server
-This section describes XML-based data formats for expressing the target security server. The data
-structures and elements defined in this section will be located under namespace http://x-road.eu/xsd/xroad.securityserver.xsd.
-The complete XML Schema is shown in section XML Schema securityserver.xsd.
+This section describes XML for expressing the target security server. The data
+structures and elements defined in this section will be located under the namespace `http://x-road.eu/xsd/xroad.xsd`.
+This is the same namespace as defined by the X-Road Message Protocol 4.0 [PR-MESS] Annex B, XML Schema for Messages.
+
+The complete XML Schema for this extension is listed in section XML Schema xroad.securityserver.xsd.
+
+### Schema header
+
 The following listing shows the header of the schema definition
 
 ```xml
- <xs:schema elementFormDefault="qualified" 
-         targetNamespace="http://x-road.eu/xsd/xroad.xsd"
-         xmlns="http://x-road.eu/xsd/xroad.xsd"
-         xmlns:id="http://x-road.eu/xsd/identifiers"
-         xmlns:xs="http://www.w3.org/2001/XMLSchema">
-     <xs:import namespace="http://www.w3.org/XML/1998/namespace"
-             schemaLocation="http://www.w3.org/2001/xml.xsd"/>
-     <xs:import id="id" namespace="http://x-road.eu/xsd/identifiers"
-             schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema elementFormDefault="qualified"
+        targetNamespace="http://x-road.eu/xsd/xroad.xsd"
+        xmlns="http://x-road.eu/xsd/xroad.xsd"
+        xmlns:id="http://x-road.eu/xsd/identifiers"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+            schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+    <xs:import id="id" namespace="http://x-road.eu/xsd/identifiers"
+            schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/>
 </xs:schema>
-``` 
 
+```
+
+### Added `securityServer` element
 A new `securityServer` element was added to identify the specific target security server.
 
 ```xml
@@ -92,7 +97,7 @@ A new `securityServer` element was added to identify the specific target securit
 </xs:complexType>
 ```
  
- ## Message headers
+### Message headers
  This section describes additional SOAP headers that are used by the X-Road system.
  
  | Field          | Type                              | Mandatory/Optional | Description                              |
@@ -101,7 +106,7 @@ A new `securityServer` element was added to identify the specific target securit
  
  
 
- ## XML Schema representation
+ ## XML Schema xroad.securityserver.xsd
  ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema elementFormDefault="qualified"
@@ -125,7 +130,7 @@ A new `securityServer` element was added to identify the specific target securit
 
 ## Example
 Below are examples from a request and response related to the Environmental Monitoring [ARC-ENVMON] service `getSecurityServerMetrics`
-which uses the `securityServer` element.
+which uses the `securityServer` element protocol extension.
 
 ### Request
 ```xml
@@ -226,6 +231,4 @@ which uses the `securityServer` element.
 | ------------- |-------------|
 | PR-MESS | Cybernetica AS.X-Road: Message Protocol v4.0      |
 | ARC-ENVMON | ARC-ENVMON |
-
-
 
