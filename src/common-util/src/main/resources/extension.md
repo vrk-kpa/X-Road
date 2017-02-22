@@ -101,9 +101,9 @@ A new `securityServer` element was added to identify the specific target securit
 ### Message headers
  This section describes additional SOAP headers that are used by the X-Road system.
  
- |Field | Type | Mandatory/Optional | Description |
- |-------------|-------------|-------------|-------------|
- | securityServer | XRoadSecurityServerIdentifierType | Optional | The security server this message is for. |
+|Field | Type | Mandatory/Optional | Description |
+|-------------|-------------|-------------|-------------|
+| securityServer | XRoadSecurityServerIdentifierType | Optional | The security server this message is for |
 
 
  ## XML Schema xroad.securityserver.xsd
