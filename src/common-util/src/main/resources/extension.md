@@ -17,7 +17,7 @@ Doc. ID: PR-TARGETSS
   * [Schema header](#schema-header)
   * [Added `securityServer` element](#added-securityserver-element)
   * [Message headers](#message-headers)
-- [XML Schema xroad.securityserver.xsd](#xml-schema-xroad.securityserver.xsd)
+- [XML Schema xroad.securityserver.xsd](#xml-schema-for-the-extension)
 - [Examples](#examples)
   *  [Request](#request)
   * [Response](#response)
@@ -33,21 +33,21 @@ This document is licensed under the Creative Commons Attribution-ShareAlike 3.0 
 
 ## Introduction
 
-This specification describes an extension of the X-Road protocol for targeting the message to a specific security server.
+This specification describes an extension of the X-Road protocol for targeting a message to a specific security server.
 
-The original X-Road 4.0 message protool \[[PR-MESS](#Ref_PR-MESS)\] has the SOAP header element _service_ to define the recipient of a message.
+The original X-Road message protool version 4.0 \[[PR-MESS](#Ref_PR-MESS)\] has the SOAP header element `service` to define the recipient of a message.
 In a clustered security server configuration, one service can be served from multiple security servers. When X-Road routes the message to such a service,
 it picks the target security server based on which server establishes a connection the quickest.
-There is no guarantee about the actual target server, it can be any of the clustered servers. There are use cases,
-like environmental monitoring \[[ARC-ENVMON](#Ref_ARC-ENVMON)\], where targeting of a specific security server is neded.
+There is no guarantee about the actual target server &mdash; it can be any of the clustered servers. There are use cases,
+like environmental monitoring \[[ARC-ENVMON](#Ref_ARC-ENVMON)\], where targeting messages to a specific security server is needed.
 
 ## Format of messages
 
-This section describes XML for expressing the target security server. The data
-structures and elements defined in this section will be located under the namespace `http://x-road.eu/xsd/xroad.xsd`.
+This section describes the XML format for expressing the target security server. The data
+structures and elements defined in this section are in the namespace `http://x-road.eu/xsd/xroad.xsd`.
 This is the same namespace as defined by the X-Road Message Protocol 4.0 \[[PR-MESS](#Ref_PR-MESS)\] Annex B, XML Schema for Messages.
 
-The complete XML Schema for this extension is listed in section XML Schema xroad.securityserver.xsd.
+The complete XML Schema for this extension is listed in the section [XML Schema for the extension](#xml-schema-for-the-extension).
 
 ### Schema header
 
@@ -106,7 +106,7 @@ A new `securityServer` element was added to identify the specific target securit
 | securityServer | XRoadSecurityServerIdentifierType | Optional | The security server this message is for |
 
 
- ## XML Schema xroad.securityserver.xsd
+ ## XML Schema for the extension
  ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema elementFormDefault="qualified"
