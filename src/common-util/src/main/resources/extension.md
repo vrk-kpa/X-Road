@@ -35,17 +35,17 @@ This document is licensed under the Creative Commons Attribution-ShareAlike 3.0 
 
 This specification describes an extension of the X-Road protocol for targeting the message to a specific security server.
 
-The original X-Road 4.0 message protool (PS-MESS) has the SOAP header element _service_ to define the recipient of a message.
+The original X-Road 4.0 message protool \[[PR-MESS](#Ref_PR-MESS)\] has the SOAP header element _service_ to define the recipient of a message.
 In a clustered security server configuration, one service can be served from multiple security servers. When X-Road routes the message to such a service,
 it picks the target security server based on which server establishes a connection the quickest.
 There is no guarantee about the actual target server, it can be any of the clustered servers. There are use cases,
-like environmental monitoring (ARC-ENVMON), where targeting of a specific security server is neded.
+like environmental monitoring \[[ARC-ENVMON](#Ref_ARC-ENVMON)\], where targeting of a specific security server is neded.
 
 ## Format of messages
 
 This section describes XML for expressing the target security server. The data
 structures and elements defined in this section will be located under the namespace `http://x-road.eu/xsd/xroad.xsd`.
-This is the same namespace as defined by the X-Road Message Protocol 4.0 [PR-MESS] Annex B, XML Schema for Messages.
+This is the same namespace as defined by the X-Road Message Protocol 4.0 \[[PR-MESS](#Ref_PR-MESS)\] Annex B, XML Schema for Messages.
 
 The complete XML Schema for this extension is listed in section XML Schema xroad.securityserver.xsd.
 
@@ -79,7 +79,7 @@ A new `securityServer` element was added to identify the specific target securit
     </xs:element>
 ```
   The element is of the type `XRoadSecurityServerIdentifierType`, which is one of the identifiers already defined
-  in the X-Road Message Protocol v 4.0 [PR-MESS] section 2.1. The whole XML schema for the identifier types is defined in
+  in the X-Road Message Protocol v 4.0 \[[PR-MESS](#Ref_PR-MESS)\] section 2.1. The whole XML schema for the identifier types is defined in
   Annex A of the same document. The relevant part is listed below for convenience.
   
 ```xml
@@ -99,7 +99,7 @@ A new `securityServer` element was added to identify the specific target securit
 ```
  
 ### Message headers
- This section describes additional SOAP headers that are used by the X-Road system.
+ This section describes the additional SOAP headers that are added by this extension.
  
 |Field | Type | Mandatory/Optional | Description |
 |-------------|-------------|-------------|-------------|
@@ -129,8 +129,8 @@ A new `securityServer` element was added to identify the specific target securit
 ```
 
 ## Examples
-Below are examples from a request and response related to the Environmental Monitoring [ARC-ENVMON] service `getSecurityServerMetrics`
-which uses the `securityServer` element protocol extension.
+Below are examples from a request and response related to the Environmental Monitoring
+\[[ARC-ENVMON](#Ref_ARC-ENVMON)\] service `getSecurityServerMetrics` which uses the `securityServer` element protocol extension.
 
 ### Request
 ```xml
@@ -228,6 +228,6 @@ which uses the `securityServer` element protocol extension.
 
 | Code||
 | ------------- |-------------|
-| PR-MESS | Cybernetica AS.X-Road: Message Protocol v4.0      |
-| ARC-ENVMON | ARC-ENVMON |
+| <a name="Ref_PR-MESS"></a>\[PR-MESS\] | Cybernetica AS.X-Road: Message Protocol v4.0      |
+| <a name="Ref_ARC-ENVMON"></a>\[ARC-ENVMON\] | X-Road: Environmental Monitoring Architecture |
 
