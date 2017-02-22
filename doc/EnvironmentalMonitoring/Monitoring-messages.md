@@ -31,7 +31,7 @@ This document is licensed under the Creative Commons Attribution-ShareAlike 3.0 
 
 ### Request
 
-Fetching security server metrics uses the X-Road protocol. The `getSecurityServerMetrics` request requires a `securityServer` header element as specified by Security Server targeting extension for the X-Road protocol 4.0 \[[PR-TARGETSS](#Ref_PR-TARGETSS)\] so that the request can be routed to a specific security server.
+Fetching security server metrics uses the X-Road protocol. The `getSecurityServerMetrics` request requires a `securityServer` header element as specified by the security server targeting extension for the X-Road message protocol \[[PR-TARGETSS](#Ref_PR-TARGETSS)\] so that the request can be routed to a specific security server.
 
 ```xml
 <SOAP-ENV:Envelope
@@ -210,4 +210,4 @@ Fetching security server metrics uses the X-Road protocol. The `getSecurityServe
 
 | Code||
 | ------------- |-------------|
-| <a name="Ref_PR-TARGETSS"></a>\[PR-TARGETSS\] | Security Server targeting extension for the X-Road message protocol 4.0     |
+| <a name="Ref_PR-TARGETSS"></a>\[PR-TARGETSS\] | Security server targeting extension for the X-Road message protocol  |

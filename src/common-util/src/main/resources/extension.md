@@ -1,4 +1,4 @@
-# Security Server targeting extension for the X-Road message protocol
+# Security server targeting extension for the X-Road message protocol
 
 Version: 1.0  
 Doc. ID: PR-TARGETSS
