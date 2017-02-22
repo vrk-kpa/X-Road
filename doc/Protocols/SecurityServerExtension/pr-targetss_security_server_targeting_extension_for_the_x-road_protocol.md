@@ -81,7 +81,7 @@ A new `securityServer` element was added to identify the specific target securit
   The element is of the type `XRoadSecurityServerIdentifierType`, which is one of the identifiers already defined
   in the X-Road Message Protocol v 4.0 \[[PR-MESS](#Ref_PR-MESS)\] section 2.1. The whole XML schema for the identifier types is defined in
   Annex A of the same document. The relevant part is listed below for convenience.
-  
+
 ```xml
 <xs:complexType name="XRoadSecurityServerIdentifierType">
     <xs:complexContent>
@@ -97,10 +97,10 @@ A new `securityServer` element was added to identify the specific target securit
     </xs:complexContent>
 </xs:complexType>
 ```
- 
+
 ### Message headers
  This section describes the additional SOAP headers that are added by this extension.
- 
+
 |Field | Type | Mandatory/Optional | Description |
 |-------------|-------------|-------------|-------------|
 | securityServer | XRoadSecurityServerIdentifierType | Optional | The security server this message is for |
@@ -110,15 +110,15 @@ A new `securityServer` element was added to identify the specific target securit
  ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema elementFormDefault="qualified"
-        targetNamespace="http://x-road.eu/xsd/xroad.xsd" 
-        xmlns="http://x-road.eu/xsd/xroad.xsd" 
-        xmlns:id="http://x-road.eu/xsd/identifiers" 
-        xmlns:xs="http://www.w3.org/2001/XMLSchema"> 
-    <xs:import namespace="http://www.w3.org/XML/1998/namespace" 
-            schemaLocation="http://www.w3.org/2001/xml.xsd"/> 
-    <xs:import id="id" namespace="http://x-road.eu/xsd/identifiers" 
-            schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/> 
-  
+        targetNamespace="http://x-road.eu/xsd/xroad.xsd"
+        xmlns="http://x-road.eu/xsd/xroad.xsd"
+        xmlns:id="http://x-road.eu/xsd/identifiers"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:import namespace="http://www.w3.org/XML/1998/namespace"
+            schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+    <xs:import id="id" namespace="http://x-road.eu/xsd/identifiers"
+            schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/>
+
     <!-- Header elements -->
     <xs:element name="securityServer" type="id:XRoadSecurityServerIdentifierType">
         <xs:annotation>
@@ -217,7 +217,7 @@ Below are examples from a request and response related to the Environmental Moni
                   <m:value>2097684480</m:value>
                </m:numericMetric>
             </m:metricSet>
-            ...          
+            ...
          </m:metricSet>
       </m:getSecurityServerMetricsResponse>
    </SOAP-ENV:Body>
