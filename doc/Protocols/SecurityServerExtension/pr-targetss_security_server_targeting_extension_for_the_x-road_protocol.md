@@ -17,7 +17,7 @@ Doc. ID: PR-TARGETSS
   * [Schema header](#schema-header)
   * [Added `securityServer` element](#added-securityserver-element)
   * [Message headers](#message-headers)
-- [XML Schema xroad.securityserver.xsd](#xml-schema-for-the-extension)
+- [XML Schema for the extension](#xml-schema-for-the-extension)
 - [Examples](#examples)
   *  [Request](#request)
   * [Response](#response)
@@ -106,7 +106,7 @@ A new `securityServer` element was added to identify the specific target securit
 | securityServer | XRoadSecurityServerIdentifierType | Optional | The security server this message is for |
 
 
- ## XML Schema for the extension
+## XML Schema for the extension
  ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema elementFormDefault="qualified"
