@@ -18,9 +18,10 @@ Doc. ID: PR-TARGETSS
   * [Added `securityServer` element](#added-securityserver-element)
   * [Message headers](#message-headers)
 - [XML Schema xroad.securityserver.xsd](#xml-schema-xroad.securityserver.xsd)
-- [Example](#example)
-- [Request](#request)
-- [Response](#response)
+- [Examples](#examples)
+  *  [Request](#request)
+  * [Response](#response)
+- [References](#references)
 
 
 <!-- tocstop -->
@@ -100,11 +101,10 @@ A new `securityServer` element was added to identify the specific target securit
 ### Message headers
  This section describes additional SOAP headers that are used by the X-Road system.
  
- | Field          | Type                              | Mandatory/Optional | Description                              |
- |----------------|-----------------------------------|--------------------|------------------------------------------|
- | securityServer | XRoadSecurityServerIdentifierType | Optional           | The security server this message is for. |
- 
- 
+ |Field | Type | Mandatory/Optional | Description |
+ |-------------|-------------|-------------|-------------|
+ | securityServer | XRoadSecurityServerIdentifierType | Optional | The security server this message is for. |
+
 
  ## XML Schema xroad.securityserver.xsd
  ```xml
@@ -128,7 +128,7 @@ A new `securityServer` element was added to identify the specific target securit
 </xs:schema>
 ```
 
-## Example
+## Examples
 Below are examples from a request and response related to the Environmental Monitoring [ARC-ENVMON] service `getSecurityServerMetrics`
 which uses the `securityServer` element protocol extension.
 
@@ -224,7 +224,6 @@ which uses the `securityServer` element protocol extension.
 </SOAP-ENV:Envelope>
 ```
 
-<a name="refsanchor"></a>
 ## References
 
 | Code||
