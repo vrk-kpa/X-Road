@@ -1,4 +1,4 @@
-# X-Road: External Load Balancer Installation Guide
+# X-Road: External Load Balancer Installation Guide (Work in progress)
 
 Version: 1.0  
 Doc. ID: IG-XLB
@@ -6,7 +6,7 @@ Doc. ID: IG-XLB
 
 | Date       | Version     | Description                                             | Author             |
 |------------|-------------|---------------------------------------------------------|--------------------|
-| 3.3.2017   | 1.0         | Initial version                                         | Olli Lindgren      |
+| X.3.2017   | 1.0         | Initial version                                         | Olli Lindgren      |
 
 
 ## Table of Contents
@@ -18,24 +18,7 @@ Doc. ID: IG-XLB
   * [1.1 Target Audience](#11-target-audience)
   * [1.2 References](#12-references)
 - [2. Installation](#2-installation)
-  * [2.1 Prerequisites to Installation](#21-prerequisites-to-installation)
-  * [2.2 Reference Data](#22-reference-data)
-  * [2.3 Requirements to the Central Server](#23-requirements-to-the-central-server)
-  * [2.4 Preparing OS](#24-preparing-os)
-  * [2.5 Installation](#25-installation)
-  * [2.6 Installing the Support for Hardware Tokens](#26-installing-the-support-for-hardware-tokens)
-  * [2.7 Installing the Support for Monitoring](#27-installing-the-support-for-monitoring)
-- [3 Initial Configuration](#3-initial-configuration)
-  * [3.1 Reference Data](#31-reference-data)
-  * [3.2 Initializing the Central Server](#32-initializing-the-central-server)
-  * [3.3 Configuring the Central Server and the Management Services' Security Server](#33-configuring-the-central-server-and-the-management-services-security-server)
-- [4 Additional configuration](#4-additional-configuration)
-  * [4.1 Adding support for V1 global configuration](#41-adding-support-for-v1-global-configuration)
-- [5 Installation Error Handling](#5-installation-error-handling)
-  * [5.1 Cannot Set LC_ALL to Default Locale](#51-cannot-set-lc_all-to-default-locale)
-  * [5.2 PostgreSQL Is Not UTF8 Compatible](#52-postgresql-is-not-utf8-compatible)
-  * [5.3 Could Not Create Default Cluster](#53-could-not-create-default-cluster)
-  * [5.4 Is Postgres Running on Port 5432?](#54-is-postgres-running-on-port-5432)
+
 
 <!-- tocstop -->
 
@@ -53,12 +36,14 @@ The document is intended for readers with a good knowledge of Linux server manag
 
 ## 1.2 References
 
+**FIXME:** to a table
 1. [UG-CS] Cybernetica AS. X-Road 6. Central Server User Guide
 2. [IG-SS] Cybernetica AS. X-Road 6. Security Server Installation Guide
 3. [UG-SS] Cybernetica AS. X-Road 6. Security Server User Guide
 4. [IG-CSHA] Cybernetica AS. X-Road 6. Central Server High Availability Installation Guide
 
 # X. Overview
+**FIXME:** check passive/active voice
 
 This document describes the external load balancing support features implemented by X-Road. The supported setup consists
 of security servers in a cluster having an identical configuration, including their keys and certificates.
@@ -74,10 +59,11 @@ Classic Load Balancing, or a hardware appliance).
 The load balancing support is implemented with a few assumptions about the environment that users should be aware of. Carefully consider
 these assumptions before deciding if the supported features are suitable for your needs.
 
-__Assumptions about the environment:__
+<a name="basic_assumptions"></a>
+__Basic Assumptions about the load balanced environment:__
 * Adding or removing nodes to or from the cluster is infrequent. **FIXME:** Mihin vaikuttaa?
 * Configuration changes are relatively infrequent and some downtime in ability to change configuration can be tolerated.
-  Therefore, the cluster uses a master-slave model and the configuration master is not replicated.
+  (The cluster uses a master-slave model and the configuration master is not replicated.)
   
 __Consequences of the selected implementation model:__  
 * Changes to the ServerConf database, authorization and signing keys are applied via the configuration master, which is
@@ -95,15 +81,79 @@ __Consequences of the selected implementation model:__
   
 ## Communication with external servers -- The Cluster from the point of view of a SS client
 
+When external security servers communicate with the cluster, they see only the cluster public IP address which is registered to the global configuration as the security server address. From the caller point of view this case is analogous to making a request to a single security server.
+
 ![alt-text](load_balancing_traffic.png)
 
+When a security server makes a request to an external server (security server, OCSP, TSA or a central server), the external server again sees only the public IP address. Note that depending on the configuration, the public IP address might be different from the one used in the previous scenario. It should also be noted that the security servers will independently make requests to OCSP, TSA and central server (global configuration fetch) as needed.
+
 ![alt-text](load_balancing_traffic-2.png)
+
+## State replication from the master to the slaves
 
 ![alt-text](load_balancing_state_replication.png)
 
 
+| messagelog database | not replicated       | N/A                                            | Each node has its own (separate) messagelog database. **Note:** In order to support PostgreSQL streaming replication (hot standby mode), the serverconf and messagelog databases must be separated.
+                                                                                                
+**FIXME:** taulukon header, "State" -> "Object", "Data"?
+### Serverconf database replication
+| State               | Replication          | Replication method                                 |
+| ------------------- | -------------------- | -------------------------------------------------- |
+| serverconf database | **replication required** | PostgreSQL streaming replication (Hot standby) |
+
+The serverconf database replication can be implemented with minimal code changes using database replication (hot standby
+or BDR). Note that PostgreSQL replication is all-or-nothing, it is not possible exclude databases from the replication.
+This is why serverconf and messagelog databases need to be separated to different instances.
 
 
+### Messagelog database replication
+| State               | Replication          | Replication method                                 |
+| ------------------- | -------------------- | -------------------------------------------------- |
+| messagelog database | **not replicated** |                                                      |
+
+The messagelog database is not replicated. Each node has its own separate messagelog database. **However**, in order to
+support PostgreSQL streaming replication (hot standby mode) for the serverconf data, the serverconf and messagelog
+databases must be separated. This requires modifications to the installation (a separate PostgreSQL instance is needed
+for the messagelog database) and has some implications on the security server resource requirements as since a separate
+instance uses some memory.
+
+### Key configuration and software token replication from `/etc/xroad/signer/*`
+| State                           | Replication          | Replication method                                 |
+| ------------------------------- | -------------------- | -------------------------------------------------- |
+| keyconf and the software token  | **replicated**       |  `rsync+ssh`  (scheduled)                          |
+
+Previously, any external modification to `/etc/xroad/signer/keyconf.xml` is overwritten by the X-Road signer process if
+it was running. Therefore, replicating the signer configuration without service disruptions would have required taking the
+cluster members offline one-by-one. The load balancing support adds the possibility for external modifications to the
+keyconf.xml to be applied on slave nodes without service disruptions. The actual state replication is done with a scheduled
+rsync over ssh. This might take a few minutes so a slight delay in propagating the changes must be tolerated by the
+clustered environment. A small delay should usually cause no problems as new keys and certificates are unlikely to be used
+immediately for X-Road messaging. Changes to the configuration are also usually relatively infrequent. These were one of
+the [basic assumptions](#basic_assumption) about the environment. Users should make sure this holds true for them.
+
+The slave nodes use the `keyconf.xml` in read-only mode, no changes are persisted to disk. Slaves reload the configuration
+from disk periodically and apply the changes to their running in-memory configuration.
+
+
+### Other server configuration parameters from `/etc/xroad/*`
+| State                                 | Replication          | Replication method                                 |
+| ------------------------------------- | -------------------- | -------------------------------------------------- |
+| other server configuration parameters | **replicated**       |  `rsync+ssh`  (scheduled)                          |
+
+The following configurations are excluded from replication:
+* `db.properties` (node-specific)
+* `postgresql/*` (node-specific keys and certs)
+* `globalconf/` (syncing globalconf could conflict with `confclient`)
+* `conf.d/node.ini` (specifies node type: master or slave)
+
+### OCSP response replication from `/var/cache/xroad/`
+| State                                 | Replication          | Replication method                                 |
+| ------------------------------------- | -------------------- | -------------------------------------------------- |
+| other server configuration parameters | **not replicated**   |  `rsync+ssh`  (scheduled)                          |
+
+The OCSP responses are currently not replicated. Replicating them could make the cluster more fault tolerant but the
+replication cannot simultaneously create a single point of failure. A distributed cache could be used for the responses.
 
 # Security server cluster setup -- REFACTOR
 
@@ -145,63 +195,4 @@ The ca directory contains two scripts that can be used to generate the keys and 
 
 # 2. Installation
 
-## 2.1 Prerequisites to setting up an external load balancer
 
-The nodes that will be set up as slaves  
-
-
-The central server software assumes an existing installation of the Ubuntu 14.04 operating system, on an x86-64bit platform.
-To provide management services, a security server is installed alongside the central server.
-The central server’s software can be installed both on physical and virtualized hardware (of the latter, Xen and Oracle VirtualBox have been tested).
-Note: If the central server is a part of a cluster for achieving high availability, the database cluster must be installed and configured before the central server itself can be installed. Please refer to the Central Server High Availability Installation Guide [IG-CSHA] for details.
-
-## 2.2 Reference Data
-
-
-## 2.3 Requirements to the Central Server
-
-
-
-## 2.4 Preparing OS
-
-
-
-## 2.5 Installation
-
-
-## 2.6 Installing the Support for Hardware Tokens
-
-
-
-## 2.7 Installing the Support for Monitoring
-
-
-
-# 3 Initial Configuration
-
-## 3.1 Reference Data
-
-
-## 3.2 Initializing the Central Server
-
-
-## 3.3 Configuring the Central Server and the Management Services' Security Server
-
-
-# 4 Additional configuration
-
-## 4.1 Adding support for V1 global configuration
-
-
-
-# 5 Installation Error Handling
-
-## 5.1 Cannot Set LC_ALL to Default Locale
-
-## 5.2 PostgreSQL Is Not UTF8 Compatible
-
-
-## 5.3 Could Not Create Default Cluster
-
-
-## 5.4 Is Postgres Running on Port 5432?
