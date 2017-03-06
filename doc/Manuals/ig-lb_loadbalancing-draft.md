@@ -55,7 +55,8 @@ A clustered environment increases fault tolerance but some X-Road messages can s
 
 The implementation does not include a load balancer component. It should be possible to use any external load balancer
 component that supports HTTP-based heath checks and load balancing at the TCP level (eg. haproxy, nginx, AWS ELB or
-Classic Load Balancing, or a hardware appliance).
+Classic Load Balancing, or a hardware appliance). A health check service is provided for monitoring the node status, this
+is described in more detail in section **FIXME:** X.X. (linkki)
 
 The load balancing support is implemented with a few assumptions about the environment that users should be aware of. Carefully consider
 these assumptions before deciding if the supported features are suitable for your needs.
@@ -496,8 +497,11 @@ Cron job to periodically start the sync task (upstart does not have a timer faci
 
 rsync options **FIXME:** add infobox
 
-* `--delay-updates` and `--delete-delay` make the sync more atomic by delaying modifications until data has been downloaded (not fully atomic, since the files will be moved into place one by one). If the sync is disrupted, no modifications will be made.
-* low connect timeout (5 seconds) and receive timeout (10 seconds) ensure that the sync won't hang if e.g. network connection fails
+* `--delay-updates` and `--delete-delay` make the sync more atomic by delaying modifications until data has been
+downloaded (not fully atomic, since the files will be moved into place one by one). If the sync is disrupted, no
+modifications will be made.
+* low connect timeout (5 seconds) and receive timeout (10 seconds) ensure that the sync won't hang if e.g. network
+connection fails
 
 
 ### Set up log rotation for the sync log
@@ -526,13 +530,13 @@ your purposes.
 
 In order to properly set up the data replication, the slave nodes must be able to connect to: 
 * the master server using SSH (tcp port 22), and
-* the master `serverconf` database (e.g. port 5433) using certificate authentication.
+* the master `serverconf` database (e.g. tcp port 5433) using certificate authentication.
 
 
 ## Master installation
 
 1. Install the X-Road security server packages using the normal installation procedure or use an existing stand-alone node.
-2. Stop the xroad services
+2. Stop the xroad services.
 3. Create a separate PostgreSQL instance for the `serverconf` database (see the database replication setup for details).
    * Change `/etc/db.properties` to point to the separate database instance
 4. If you are using an already configured server as the master, you can copy over the `serverconf` database data. Otherwise,
@@ -558,17 +562,19 @@ In order to properly set up the data replication, the slave nodes must be able t
       [Node]
       type=master
       ```
+8. Start the X-Road services.
    
    
 ## Slave installation
 1. Install security server packages using the normal installation procedure. `nginx` or `xroad-jetty` packages  are not
    required for slave nodes, but the admin graphical user interface (which requires these packages) can be handy for
    diagnostics. It should be noted that changing a slave's configuration via the admin gui is not possible.
-2. Stop the xroad services
+2. Stop the xroad services.
 3. Create a separate PostgreSQL instance for the serverconf database (see database replication setup setup for details) **FIXME: link**
-  * Change /etc/db.properties to point to the separate database instance and change password to match the one defined in the master database.
-4. Set up SSH between master and slave (the slave must be able to access /etc/xroad via ssh)
-  * Create an SSH keypair for xroad user and copy the public key to the master (/home/xroad-slave/.ssh/authorized keys)
+  * Change `/etc/db.properties` to point to the separate database instance and change password to match the one defined in the master database.
+4. Set up SSH between the master and the slave (the slave must be able to access `/etc/xroad` via ssh)
+  * Create an SSH keypair for `xroad` user and copy the public key to authorized keys of the master node
+  (`/home/xroad-slave/.ssh/authorized_keys`)
 5. Set up state synchronization using rsync+ssh
    * See Configuring replication with rsync over ssh **FIXME: link**
    * Make the inital synchronization between the master and the slave.
@@ -581,3 +587,81 @@ In order to properly set up the data replication, the slave nodes must be able t
    [Node]
    type=slave
    ```
+7. Start the X-Road services.
+
+
+## Health check service configuration
+The load balance support includes a health check service that can be used to ping the security server using HTTP to see if
+it is healthy and likely to be able to send and receive messages. The service is disabled by default but can be enabled
+via configuration options.
+
+| Proxy service configuration option | Default value | Description |
+|---|---|---|
+| health-check-interface | `0.0.0.0` (all network interfaces) | The network interface this service listens to. This should be an address the load balancer component can use to check the server status |
+| health-check-port | `0` (disabled) | The tcp port the service listens to for HTTP requests. The default value `0` disables the service. |
+
+Below is a configuration that can be added to  `/etc/xroad/conf.d/local.ini` on the master that would enable the health check
+service on all the nodes once the configuration has been replicated. Changes to the settings require restarting the
+`xroad-proxy` service to take effect. This example enables listening to all available network interfaces (`0.0.0.0`) on
+port 5588.
+
+```
+[Proxy]
+health-check-interface=0.0.0.0
+health-check-port=5588
+```
+
+The service can be accessed using plain HTTP. It will return `HTTP 200 OK` if the proxy should be able to process messages
+and `HTTP 500 Internal Server Error` otherwise. A short message about the failure reason, if available, is added to the
+body of the response. The service runs as a part of the `xroad-proxy` service.
+
+In addition to implicitly verifying that the `xroad-proxy` service is running, the  health checks verify that:
+* The server authentication key is accessible and that the OCSP response for the certificate is `good`. This requires a
+running `xroad-signer` service in good condition.
+* The `serverconf` database is accessible.
+
+Each of these status checks has a separate timeout of 5 seconds. If the status check fails to produce a response in this
+time, it will be considered a health check failure and will cause a `HTTP 500` response.
+
+In addition, each status check result will be cached for a short while to avoid excess resource usage. A successful status
+check result will be cached for 2 seconds before a new verification is triggered. This is to make sure the OK results are
+as fresh as possible while avoiding per-request verification. In contrast, verification failures will be cached for 30
+seconds before a new verification is triggered. This should allow for the security server to get up and running after a
+failure or possible reboot before the status is queried again.
+
+
+### Known check result inconsistencies vs. actual state
+There is a known but rarely and not naturally occurring issue where the health check will report and OK condition for a
+limited time but sending some messages might not be possible. This happens when an admin user logs out of the keys.
+
+The health check will detect if the tokens (the key containers) have not been signed into after `xroad-signer` startup.
+It will however, not detect immediately when the tokens are manually logged out of. The keys are cached by the `xroad-proxy`
+process for a short while. As long as the authentication key is still cached, the health check will return OK. The necessary
+signing context values for sending a message might no longer be cached though. This means messages might fail to be sent
+even if the health check returns OK. As the authentication key expires from the cache (after a maximum of 5 minutes), the
+health check will start returning failures. This is a feature of caching and not a bug per se. In addition, logging out
+of a security server's keys should not occur by accident so it should not be a surprise that the node cannot send messages
+after not having access to it's keys.
+
+
+### Health check examples
+
+Before testing with an actual load balancer, you can test the health check service with `curl`, for example.
+
+Health check service response when everything is up and running and messages should go through.
+```
+$ curl -i localhost:5588
+   HTTP/1.1 200 OK
+   Content-Length: 0
+   Server: Jetty(8.y.z-SNAPSHOT)
+```
+
+Health check service response when the service `xroad-signer` is not running.
+```
+$ curl -i localhost:5588
+HTTP/1.1 500 Server Error
+Transfer-Encoding: chunked
+Server: Jetty(8.y.z-SNAPSHOT)
+
+Fetching health check response timed out for: Authentication key OCSP status
+```
