@@ -13,19 +13,41 @@ Doc. ID: IG-XLB
 
 <!-- toc -->
 
-
-
-
 - [License](#license)
 - [1. Introduction](#1-introduction)
   * [1.1 Target Audience](#11-target-audience)
   * [1.2 References](#12-references)
 - [2. Overview](#2-overview)
-- [4. X-Road Installation and configuration](#x-road-installation-and-configuration)
-
+  * [Communication with external servers -- The Cluster from the point of view of a SS client](#communication-with-external-servers----the-cluster-from-the-point-of-view-of-a-ss-client)
+  * [State replication from the master to the slaves](#state-replication-from-the-master-to-the-slaves)
+    + [Serverconf database replication](#serverconf-database-replication)
+    + [Messagelog database replication](#messagelog-database-replication)
+    + [Key configuration and software token replication from `/etc/xroad/signer/*`](#key-configuration-and-software-token-replication-from-etcxroadsigner)
+    + [Other server configuration parameters from `/etc/xroad/*`](#other-server-configuration-parameters-from-etcxroad)
+    + [OCSP response replication from `/var/cache/xroad/`](#ocsp-response-replication-from-varcachexroad)
+  * [Set up SSL keys certificates for PostgreSQL replication connections](#set-up-ssl-keys-certificates-for-postgresql-replication-connections)
+- [2. Database replication setup](#2-database-replication-setup)
+  * [Prerequisites](#prerequisites)
+  * [Setting up TLS certificates for database authentication](#setting-up-tls-certificates-for-database-authentication)
+  * [Creating a separate PostgreSQL instance for serverconf database](#creating-a-separate-postgresql-instance-for-serverconf-database)
+    + [RHEL](#rhel)
+    + [Ubuntu](#ubuntu)
+  * [Configuring the master instance for replication](#configuring-the-master-instance-for-replication)
+  * [Configuring the slave instance for replication](#configuring-the-slave-instance-for-replication)
+- [3. Configuring data replication with rsync over SSH](#3-configuring-data-replication-with-rsync-over-ssh)
+  * [Set up SSH between slave and master](#set-up-ssh-between-slave-and-master)
+    + [Using systemd (RHEL)](#using-systemd-rhel)
+    + [Using upstart and cron (Ubuntu)](#using-upstart-and-cron-ubuntu)
+    + [Set up log rotation for the sync log](#set-up-log-rotation-for-the-sync-log)
+- [4. X-Road Installation and configuration](#4-x-road-installation-and-configuration)
+  * [Prerequisites](#prerequisites-1)
+  * [Master installation](#master-installation)
+  * [Slave installation](#slave-installation)
+  * [Health check service configuration](#health-check-service-configuration)
+    + [Known check result inconsistencies vs. actual state](#known-check-result-inconsistencies-vs-actual-state)
+    + [Health check examples](#health-check-examples)
 
 <!-- tocstop -->
-
 
 ## License
 
