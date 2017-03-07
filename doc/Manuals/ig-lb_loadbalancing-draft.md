@@ -87,7 +87,7 @@ A clustered environment increases fault tolerance but some X-Road messages can s
 The implementation does not include a load balancer component. It should be possible to use any external load balancer
 component that supports HTTP-based health checks for the nodes and load balancing at the TCP level (eg. haproxy, nginx,
 AWS ELB or Classic Load Balancing, or a hardware appliance). A health check service is provided for monitoring a node's
-status, this is described in more detail in section [3.4 Health check service configuration](#5-health-check-service-configuration)
+status, this is described in more detail in section [3.4 Health check service configuration](#34-health-check-service-configuration)
 
 The load balancing support is implemented with a few assumptions about the environment that users should be aware of.
 Carefully consider these assumptions before deciding if the supported features are suitable for your needs.
@@ -188,7 +188,7 @@ The following configurations are excluded from replication:
 #### 2.3.5 OCSP response replication from `/var/cache/xroad/`
 | State                                 | Replication          | Replication method                                 |
 | ------------------------------------- | -------------------- | -------------------------------------------------- |
-| other server configuration parameters | **not replicated**   |  `rsync+ssh`  (scheduled)                          |
+| other server configuration parameters | **not replicated**   |                   |
 
 The OCSP responses are currently not replicated. Replicating them could make the cluster more fault tolerant but the
 replication cannot simultaneously create a single point of failure. A distributed cache could be used for the responses.
@@ -196,7 +196,7 @@ replication cannot simultaneously create a single point of failure. A distribute
 
 ## 3. X-Road Installation and configuration
 
-You can set up the cluster manually, or use the provided Ansible playbook \[[SS-CLUSTER](#references)\] if it suits
+You can set up the cluster manually, or use the provided Ansible playbook \[[SS-CLUSTER](#12-references)\] if it suits
 your purposes.
 
 ### 3.1 Prerequisites
@@ -215,7 +215,7 @@ In order to properly set up the data replication, the slave nodes must be able t
    * Change `/etc/db.properties` to point to the separate database instance
 4. If you are using an already configured server as the master, you can copy over the `serverconf` database data. Otherwise,
    proceed to configure the master server: install the configuration anchor, set up basic information, create authentication
-   and signing keys and so on. See the security server installation guide \[[IG-SS](#references)\] for help with the basic
+   and signing keys and so on. See the security server installation guide \[[IG-SS](#12-references)\] for help with the basic
    setup.
 5. Set up and configure the data replication, see section
    [5. Configuring data replication with rsync over SSH](#5-configuring-data-replication-with-rsync-over-ssh)
@@ -248,10 +248,10 @@ In order to properly set up the data replication, the slave nodes must be able t
    ```
    Where `<master>` is the master server.
 6. Configure the node type as `slave` in `/etc/xroad/node.ini`:
-   ```bash
-   [Node]
-   type=slave
-   ```
+      ```bash
+      [Node]
+      type=slave
+      ```
 7. Start the X-Road services.
 
 
