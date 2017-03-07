@@ -87,7 +87,7 @@ A clustered environment increases fault tolerance but some X-Road messages can s
 The implementation does not include a load balancer component. It should be possible to use any external load balancer
 component that supports HTTP-based health checks for the nodes and load balancing at the TCP level (eg. haproxy, nginx,
 AWS ELB or Classic Load Balancing, or a hardware appliance). A health check service is provided for monitoring a node's
-status, this is described in more detail in section **FIXME:** X.X. (linkki)
+status, this is described in more detail in section [3.4 Health check service configuration](#5-health-check-service-configuration)
 
 The load balancing support is implemented with a few assumptions about the environment that users should be aware of.
 Carefully consider these assumptions before deciding if the supported features are suitable for your needs.
@@ -116,8 +116,6 @@ __Consequences of the selected implementation model:__
   
 ### 2.2 Communication with external security servers: The cluster from the point of view of a cluster security server client
 
-**FIXME:** alignment/tone
-
 When external security servers communicate with the cluster, they see only the public IP address of the cluster which is
 registered to the global configuration as the security server address. From the caller point of view, this case is analogous
 to making a request to a single security server.
@@ -125,7 +123,7 @@ to making a request to a single security server.
 ![alt-text](load_balancing_traffic.png)
 
 When a security server makes a request to an external server (security server, OCSP, TSA or a central server), the
-external server again sees only the public IP address. Note that depending on the configuration, the public IP address
+external server sees only the public IP address. Note that depending on the configuration, the public IP address
 might be different from the one used in the previous scenario. It should also be noted that the security servers will
 independently make requests to OCSP and TSA services as well as the and central server to fetch the global configuration
 as needed.
@@ -236,12 +234,13 @@ In order to properly set up the data replication, the slave nodes must be able t
    required for slave nodes, but the admin graphical user interface (which requires these packages) can be handy for
    diagnostics. It should be noted that changing a slave's configuration via the admin gui is not possible.
 2. Stop the xroad services.
-3. Create a separate PostgreSQL instance for the serverconf database (see database replication setup setup for details) **FIXME: link**
+3. Create a separate PostgreSQL instance for the serverconf database (see section 
+   [4. Database replication setup](#4-database-replication-setup) for details)
   * Change `/etc/db.properties` to point to the separate database instance and change password to match the one defined in the master database.
 4. Set up SSH between the master and the slave (the slave must be able to access `/etc/xroad` via ssh)
-  * Create an SSH keypair for `xroad` user and copy the public key to authorized keys of the master node
-  (`/home/xroad-slave/.ssh/authorized_keys`)
-5. Set up state synchronization using rsync+ssh. See
+   * Create an SSH keypair for `xroad` user and copy the public key to authorized keys of the master node
+   (`/home/xroad-slave/.ssh/authorized_keys`)
+5. Set up state synchronization using rsync+ssh. See section
    [5. Configuring data replication with rsync over SSH](#5-configuring-data-replication-with-rsync-over-ssh)
    * Make the inital synchronization between the master and the slave.
    ```bash
