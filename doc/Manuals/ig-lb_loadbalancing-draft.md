@@ -248,6 +248,7 @@ In order to properly set up the data replication, the slave nodes must be able t
    ```
    Where `<master>` is the master server.
 6. Configure the node type as `slave` in `/etc/xroad/node.ini`:
+
       ```bash
       [Node]
       type=slave
