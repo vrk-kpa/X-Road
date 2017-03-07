@@ -18,6 +18,7 @@ Doc. ID: IG-XLB
   * [1.1 Target Audience](#11-target-audience)
   * [1.2 References](#12-references)
 - [2. Installation](#2-installation)
+- [4. X-Road Installation and configuration](#x-road-installation-and-configuration)
 
 
 <!-- tocstop -->
@@ -25,16 +26,19 @@ Doc. ID: IG-XLB
 
 ## License
 
-This document is licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported License. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/3.0/.
+This document is licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported License. To view a copy of this
+license, visit http://creativecommons.org/licenses/by-sa/3.0/.
 
-# 1. Introduction
+## 1. Introduction
 
-## 1.1 Target Audience
+### 1.1 Target Audience
 
-The intended audience of this installation guide are the X-Road security server administrators responsible for installing and configuring the X-Road security server software.
-The document is intended for readers with a good knowledge of Linux server management, computer networks, database administration and the X-Road functioning principles.
+The intended audience of this installation guide are the X-Road security server administrators responsible for installing
+and configuring X-Road security servers to use external load balancing. The document is intended for readers with a good
+knowledge of Linux server management, computer networks, database administration, clustered environments and the X-Road
+functioning principles.
 
-## 1.2 References
+### 1.2 References
 **FIXME:** check links
 
 | Document Id    |  Document                                                                                |
@@ -43,20 +47,21 @@ The document is intended for readers with a good knowledge of Linux server manag
 | \[IG-SS\] | [X-Road: Security Server Installation Guide](ig-ss_x-road_v6_security_server_installation_guide.md) |
 
 
-# X. Overview
+## X. Overview
 **FIXME:** check passive/active voice
 
-This document describes the external load balancing support features implemented by X-Road. The supported setup consists
-of security servers in a cluster having an identical configuration, including their keys and certificates.
-X-Road security server configuration changes are handled by a single master server and one or more slave servers (nodes).
+This document describes the external load balancing support features implemented by X-Road and the steps necessary to
+configure security servers to run as a cluster where each node has an identical configuration, including their keys and
+certificates. X-Road security server configuration changes are handled by a single master server and one or more slave
+servers.
 
 The primary goal of the load balancing support is, as the name suggests, load balancing, not fault tolerance.
 A clustered environment increases fault tolerance but some X-Road messages can still be lost if a security server node fails.
 
 The implementation does not include a load balancer component. It should be possible to use any external load balancer
-component that supports HTTP-based heath checks and load balancing at the TCP level (eg. haproxy, nginx, AWS ELB or
-Classic Load Balancing, or a hardware appliance). A health check service is provided for monitoring the node status, this
-is described in more detail in section **FIXME:** X.X. (linkki)
+component that supports HTTP-based health checks for the nodes and load balancing at the TCP level (eg. haproxy, nginx,
+AWS ELB or Classic Load Balancing, or a hardware appliance). A health check service is provided for monitoring a node's
+status, this is described in more detail in section **FIXME:** X.X. (linkki)
 
 The load balancing support is implemented with a few assumptions about the environment that users should be aware of. Carefully consider
 these assumptions before deciding if the supported features are suitable for your needs.
@@ -81,7 +86,7 @@ __Consequences of the selected implementation model:__
 * If the master node fails or communication is interrupted during a configuration update, each slave should have a valid configuration,
   but the cluster state can be inconsistent (some members might have the old configuration while some might have received all the changes).
   
-## Communication with external servers -- The Cluster from the point of view of a SS client
+### Communication with external servers -- The Cluster from the point of view of a SS client
 
 **FIXME:** alignment/tone
 
@@ -99,13 +104,13 @@ as needed.
 
 ![alt-text](load_balancing_traffic-2.png)
 
-## State replication from the master to the slaves
+### State replication from the master to the slaves
 
 ![alt-text](load_balancing_state_replication.png)
 
                                                                                                 
 **FIXME:** taulukon header, "State" -> "Object", "Data"?
-### Serverconf database replication
+#### Serverconf database replication
 | State               | Replication          | Replication method                                 |
 | ------------------- | -------------------- | -------------------------------------------------- |
 | serverconf database | **replication required** | PostgreSQL streaming replication (Hot standby) |
@@ -115,7 +120,7 @@ is all-or-nothing, it is not possible exclude databases from the replication. Th
 non-replicated messagelog databases need to be separated to different instances.
 
 
-### Messagelog database replication
+#### Messagelog database replication
 | State               | Replication          | Replication method                                 |
 | ------------------- | -------------------- | -------------------------------------------------- |
 | messagelog database | **not replicated** |                                                      |
@@ -126,7 +131,7 @@ databases must be separated. This requires modifications to the installation (a 
 for the messagelog database) and has some implications on the security server resource requirements as since a separate
 instance uses some memory.
 
-### Key configuration and software token replication from `/etc/xroad/signer/*`
+#### Key configuration and software token replication from `/etc/xroad/signer/*`
 | State                           | Replication          | Replication method                                 |
 | ------------------------------- | -------------------- | -------------------------------------------------- |
 | keyconf and the software token  | **replicated**       |  `rsync+ssh`  (scheduled)                          |
@@ -144,7 +149,7 @@ The slave nodes use the `keyconf.xml` in read-only mode, no changes are persiste
 from disk periodically and apply the changes to their running in-memory configuration.
 
 
-### Other server configuration parameters from `/etc/xroad/*`
+#### Other server configuration parameters from `/etc/xroad/*`
 | State                                 | Replication          | Replication method                                 |
 | ------------------------------------- | -------------------- | -------------------------------------------------- |
 | other server configuration parameters | **replicated**       |  `rsync+ssh`  (scheduled)                          |
@@ -155,7 +160,7 @@ The following configurations are excluded from replication:
 * `globalconf/` (syncing globalconf could conflict with `confclient`)
 * `conf.d/node.ini` (specifies node type: master or slave)
 
-### OCSP response replication from `/var/cache/xroad/`
+#### OCSP response replication from `/var/cache/xroad/`
 | State                                 | Replication          | Replication method                                 |
 | ------------------------------------- | -------------------- | -------------------------------------------------- |
 | other server configuration parameters | **not replicated**   |  `rsync+ssh`  (scheduled)                          |
@@ -167,13 +172,13 @@ replication cannot simultaneously create a single point of failure. A distribute
 
 
 
-# Security server cluster setup -- REFACTOR
+## Security server cluster setup -- REFACTOR
 
 This ansible playbook configures a master (1) - slave (n) security server cluster. In addition, setting up a load balancer (out of scope) is needed.
 
 The playbook has been tested in AWS EC2 using stock RHEL 7 and Ubuntu 14.04 AMIs running default X-Road security server installation. Other environments might require modifications to the playbook.
 
-## Prerequisites
+### Prerequisites
 
 * One security server that acts as master
 * One or more slave security servers.
@@ -193,7 +198,7 @@ The playbook has been tested in AWS EC2 using stock RHEL 7 and Ubuntu 14.04 AMIs
 
 All the servers in a cluster should have the same operating system (Ubuntu 14.04 or RHEL 7). The setup also assumes that the servers are in the same subnet. If that is not the case, one needs to modify master's pg_hba.nconf so that it accepts replication configurations from the correct network(s).
 
-## Set up SSL keys certificates for PostgreSQL replication connections
+### Set up SSL keys certificates for PostgreSQL replication connections
 
 Create a CA certificate and store it in PEM format as ca.crt in the "ca" folder. Create TLS key and certificate (PEM) signed by the CA for each node and store those as ca/"nodename"/server.key and ca/"nodename"/server.crt. The server keys must not have a passphrase, but one can and should use ansible-vault to protect
 the keys.
@@ -205,16 +210,16 @@ The ca directory contains two scripts that can be used to generate the keys and 
 * add-node.sh creates a key and a certificate signed by the CA.
 
 
-# 2. Database replication setup
+## 2. Database replication setup
 ```
 For more information for PostgreSQL replication, refer to the official documentation:
 https://www.postgresql.org/docs/9.2/static/high-availability.html
 Note that the PostgreSQL version distributed on RHEL and Ubuntu differ. Currently RHEL 7 distributes PostgreSQL version 9.2 and Ubuntu 14.04 version 9.3; the replication configuration is the same for both versions.
 ```
 
-## Prerequisites
+### Prerequisites
 
-## Setting up TLS certificates for database authentication
+### Setting up TLS certificates for database authentication
 ( See https://www.postgresql.org/docs/9.2/static/auth-methods.html#AUTH-CERT for details )
 
 1. Generate the Certificate Authority key & self-signed certificate for the root-of-trust:
@@ -249,9 +254,9 @@ Alternatively, one can use an existing internal CA for managing the certificates
 One should create a sub-CA for the database cluster root-of-trust and use that for issuing the slave and master certificates.
 ```
 
-## Creating a separate PostgreSQL instance for serverconf database
+### Creating a separate PostgreSQL instance for serverconf database
 
-### RHEL
+#### RHEL
 Create new systemctl service unit for the new database. As root, execute the following scripts:
 ```
 cat <<EOF >/etc/systemd/system/postgresql-serverconf.service
@@ -268,7 +273,7 @@ semanage port -a -t postgresql_port_t -p tcp 5433
 systemctl enable postgresql-serverconf
 ```
 
-### Ubuntu
+#### Ubuntu
 ```bash
 sudo -u postgres pg_createcluster -p 5433 9.3 serverconf
 ```
@@ -280,7 +285,7 @@ On RHEL, PostgreSQL config files are located in the PGDATA directory (/var/lib/p
 Ubuntu keeps the config in /etc/postgresql/<version>/<cluster name>, e.g. /etc/postgresql/9.3/serverconf
 ```
 
-## Configuring the master instance for replication
+### Configuring the master instance for replication
 Edit postgresql.conf and set the following options:
 ```
 ssl = on
@@ -320,7 +325,7 @@ Copy the serverconf database from the default instance to the new instance:
 sudo -u postgres pg_dump -C serverconf | sudo -u postgres psql -p 5433 -f -
 ```
 
-## Configuring the slave instance for replication
+### Configuring the slave instance for replication
 ( prerequisites: separate postgresql instance created, SSL keys and certificates in /etc/xroad/postgresql )
 Goto the postgresql data directory:
  * RHEL: `/var/lib/pgsql/serverconf`
@@ -373,9 +378,9 @@ Ubuntu:
 ```
  (note that this starts all configured database instances)
  
-# 3. Configuring data replication with rsync over SSH
+## 3. Configuring data replication with rsync over SSH
 
-## Set up SSH between slave and master
+### Set up SSH between slave and master
 On master, set up a system user that can read `/etc/xroad`
 A system user has password disabled (can not log in normally)
 Ubuntu:
@@ -397,7 +402,7 @@ the `/home/xroad-slave/.ssh/authorized_keys` (on master)
 
 On slave(s), connect to the master host using ssh and accept the host key.
 
-##Set up periodic configuration sync
+###Set up periodic configuration sync
 
 The following configuration sync the configuration in `/etc/xroad` periodically (once per minute) and before the services
 are started. E.g. during boot, if the master server is available, the configuration will be synced before xroad-proxy is
@@ -406,7 +411,7 @@ started. If the master is down, there will be a small delay before the services 
 Note that only modifications to the signer keyconf will be applied when the system is running. Other configuration changes
 require restarting the services, which is not automatic.
 
-### Using systemd (RHEL)
+#### Using systemd (RHEL)
 Add xroad-sync systemd service:
 
 `/etc/systemd/system/xroad-sync.service`
@@ -455,7 +460,7 @@ systemctl enable xroad-sync.timer xroad-sync.service
 systemctl start xroad-sync.timer
 ```
 
-### Using upstart and cron (Ubuntu)
+#### Using upstart and cron (Ubuntu)
 
 Main upstart task for syncing:
 
@@ -504,7 +509,7 @@ modifications will be made.
 connection fails
 
 
-### Set up log rotation for the sync log
+#### Set up log rotation for the sync log
 
 Add the following config file (the example rotates logs daily, keeps logs for 7 days which should be enough for troubleshooting).
 
@@ -521,19 +526,19 @@ Add the following config file (the example rotates logs daily, keeps logs for 7 
 }
 ```
  
-# 4. X-Road Installation and configuration
+## 4. X-Road Installation and configuration
 
 You can set up the cluster manually, or use the provided Ansible playbook \[[SS-CLUSTER](#references)\] if it suits
 your purposes.
 
-## Prerequisites
+### Prerequisites
 
 In order to properly set up the data replication, the slave nodes must be able to connect to: 
 * the master server using SSH (tcp port 22), and
 * the master `serverconf` database (e.g. tcp port 5433) using certificate authentication.
 
 
-## Master installation
+### Master installation
 
 1. Install the X-Road security server packages using the normal installation procedure or use an existing stand-alone node.
 2. Stop the xroad services.
@@ -565,7 +570,7 @@ In order to properly set up the data replication, the slave nodes must be able t
 8. Start the X-Road services.
    
    
-## Slave installation
+### Slave installation
 1. Install security server packages using the normal installation procedure. `nginx` or `xroad-jetty` packages  are not
    required for slave nodes, but the admin graphical user interface (which requires these packages) can be handy for
    diagnostics. It should be noted that changing a slave's configuration via the admin gui is not possible.
@@ -590,7 +595,7 @@ In order to properly set up the data replication, the slave nodes must be able t
 7. Start the X-Road services.
 
 
-## Health check service configuration
+### Health check service configuration
 The load balance support includes a health check service that can be used to ping the security server using HTTP to see if
 it is healthy and likely to be able to send and receive messages. The service is disabled by default but can be enabled
 via configuration options.
@@ -630,7 +635,7 @@ seconds before a new verification is triggered. This should allow for the securi
 failure or possible reboot before the status is queried again.
 
 
-### Known check result inconsistencies vs. actual state
+#### Known check result inconsistencies vs. actual state
 There is a known but rarely and not naturally occurring issue where the health check will report and OK condition for a
 limited time but sending some messages might not be possible. This happens when an admin user logs out of the keys.
 
@@ -644,7 +649,7 @@ of a security server's keys should not occur by accident so it should not be a s
 after not having access to it's keys.
 
 
-### Health check examples
+#### Health check examples
 
 Before testing with an actual load balancer, you can test the health check service with `curl`, for example.
 
