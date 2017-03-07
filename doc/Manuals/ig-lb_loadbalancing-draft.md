@@ -73,12 +73,13 @@ functioning principles.
 
 
 ## 2. Overview 
-**FIXME:** check passive/active voice
 
 This document describes the external load balancing support features implemented by X-Road and the steps necessary to
 configure security servers to run as a cluster where each node has an identical configuration, including their keys and
 certificates. X-Road security server configuration changes are handled by a single master server and one or more slave
 servers.
+
+### 2.1 Goals and assumptions
 
 The primary goal of the load balancing support is, as the name suggests, load balancing, not fault tolerance.
 A clustered environment increases fault tolerance but some X-Road messages can still be lost if a security server node fails.
@@ -88,8 +89,8 @@ component that supports HTTP-based health checks for the nodes and load balancin
 AWS ELB or Classic Load Balancing, or a hardware appliance). A health check service is provided for monitoring a node's
 status, this is described in more detail in section **FIXME:** X.X. (linkki)
 
-The load balancing support is implemented with a few assumptions about the environment that users should be aware of. Carefully consider
-these assumptions before deciding if the supported features are suitable for your needs.
+The load balancing support is implemented with a few assumptions about the environment that users should be aware of.
+Carefully consider these assumptions before deciding if the supported features are suitable for your needs.
 
 <a name="basic_assumptions"></a>
 __Basic Assumptions about the load balanced environment:__
@@ -98,7 +99,7 @@ __Basic Assumptions about the load balanced environment:__
   (The cluster uses a master-slave model and the configuration master is not replicated.)
   
 __Consequences of the selected implementation model:__  
-* Changes to the ServerConf database, authorization and signing keys are applied via the configuration master, which is
+* Changes to the `serverconf` database, authorization and signing keys are applied via the configuration master, which is
   a member of the cluster. The replication is one-way from master to slaves and the slaves should treat the configuration as read-only.
 * The cluster nodes can continue operation if the master fails but the configuration can not be changed until:
   - the master becomes back on-line, or
@@ -111,7 +112,7 @@ __Consequences of the selected implementation model:__
 * If the master node fails or communication is interrupted during a configuration update, each slave should have a valid configuration,
   but the cluster state can be inconsistent (some members might have the old configuration while some might have received all the changes).
   
-### Communication with external servers -- The Cluster from the point of view of a SS client
+### Communication with external security servers: The Cluster from the point of view of a cluster security server client
 
 **FIXME:** alignment/tone
 
@@ -540,7 +541,7 @@ In order to properly set up the data replication, the slave nodes must be able t
 
 ### Master installation
 
-1. Install the X-Road security server packages using the normal installation procedure or use an existing stand-alone node.
+1. Install the X-Road security server packages using the normal installation procedure or use an existing standalone node.
 2. Stop the xroad services.
 3. Create a separate PostgreSQL instance for the `serverconf` database (see the database replication setup for details).
    * Change `/etc/db.properties` to point to the separate database instance
