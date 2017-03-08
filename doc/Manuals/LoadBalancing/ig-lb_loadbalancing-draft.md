@@ -337,7 +337,7 @@ Fetching health check response timed out for: Authentication key OCSP status
 
 For technical details on the PostgreSQL replication, refer to the [official documentation](https://www.postgresql.org/docs/9.2/static/high-availability.html).
 Note that the versions of PostgreSQL distributed with RHEL and Ubuntu are different. At the time of writing, RHEL 7
-distributes PostgreSQL version 9.2 and Ubuntu distributes 14.04 version 9.3; the replication configuration is the same
+distributes PostgreSQL version 9.2 and Ubuntu 14.04 distributes version 9.3; the replication configuration is the same
 for both versions.
 
 
@@ -353,7 +353,7 @@ For further details on the certificate authentication, see the
    ```
    openssl req -new -x509 -days 7300 -nodes -sha256 -out master.crt -keyout master.key -subj '/O=cluster/CN=master'
    ```
-   The subject name does not really matter here. Rembember to keep the master.key in a safe place.
+   The subject name does not really matter here. Remember to keep the `master.key` file in a safe place.
 
 2. Generate keys and certificates signed by the CA for each postgresql instance, including the master. Do not use the CA
    certificate and key as the database certificate and key.
@@ -381,8 +381,8 @@ For further details on the certificate authentication, see the
    sudo chmod 400 /etc/xroad/postgresql/server.key
    ```
 
-> Alternatively, one can use an existing internal CA for managing the certificates.
-> One should create a sub-CA for the database cluster root-of-trust and use that for issuing the slave and master certificates.
+> Alternatively, an existing internal CA can be used for managing the certificates. A sub-CA should be created as the
+> database cluster root-of-trust and use that for issuing the slave and master certificates.
 
 
 ### 4.2 Creating a separate PostgreSQL instance for the `serverconf` database
@@ -416,7 +416,7 @@ In the above command, `9.3` is the postgresql version. Use `pg_lsclusters` to fi
  
 
 **PostgreSQL configuration location:**
-> On RHEL, PostgreSQL config files are located in the `PGDATA` directory (`/var/lib/pgql/serverconf`).
+> On RHEL, PostgreSQL config files are located in the `PGDATA` directory `/var/lib/pgql/serverconf`.
 > Ubuntu keeps the config in `/etc/postgresql/<version>/<cluster name>`, e.g. `/etc/postgresql/9.3/serverconf`
 
 
@@ -432,12 +432,12 @@ ssl_key_file  = '/etc/xroad/postgresql/server.key'
 
 listen_addresses = *    # (default is localhost. Alternatively: localhost, <IP of the interface the slaves connect to>")
 wal_level = hot_standby
-max_wal_senders   = 3   # should be ~ number of slaves plus some small number. Assuming here two slaves.
-wal_keep_segments = 8   # keep some wal segments so that slaves that are offline can catch up
+max_wal_senders   = 3   # should be ~ number of slaves plus some small number. Here, we assume there two slaves.
+wal_keep_segments = 8   # keep some wal segments so that slaves that are offline can catch up.
 ```
 
-Edit `pg_hba.conf` and enable connections to the replication pseudo database using client certificates (see chapter 
-[4.1](#41-setting-up-tls-certificates-for-database-authentication)) for the authentication setup.
+Edit `pg_hba.conf` and enable connections to the replication pseudo database using client certificates. See chapter 
+[4.1](#41-setting-up-tls-certificates-for-database-authentication) for the authentication setup.
 
 ```
 hostssl     replication     +slavenode  samenet     cert
@@ -453,13 +453,13 @@ Start the master instance:
 systemctl start postgresql-serverconf | /etc/init.d/postgresql start
 ```
 
-Create the replication user(s) (password authentication disabled):
+Create the replication user(s) with password authentication disabled:
 ```bash
 sudo -u postgres psql -p 5433 -c "CREATE ROLE slavenode NOLOGIN";
 sudo -u postgres psql -p 5433 -c "CREATE USER <nodename> REPLICATION PASSWORD NULL IN ROLE slavenode";
 ```
 
-Create `serverconf` user for local `serverconf` access:
+Create a user named `serverconf` for local `serverconf` database access:
 
 ```bash
 sudo -u postgres psql -p 5433 -c "CREATE USER serverconf PASSWORD '<password>'";
@@ -549,11 +549,11 @@ adduser --system --ingroup xroad xroad-slave
 **RHEL:**
 
 ``bash
-seradd -r -m -g xroad xroad-slave
+useradd -r -m -g xroad xroad-slave
 ``
 
 
-Create an `.ssh` folder and the authorized keys
+Create an `.ssh` folder and the authorized keys file:
 ```bash
 sudo mkdir -m 755 -p /home/xroad-slave/.ssh && sudo touch /home/xroad-slave/authorized_keys
  ```
@@ -573,7 +573,7 @@ the services are started.
 > Note that only modifications to the signer keyconf will be applied when the system is running. Other configuration changes
 > require restarting the services, which is not automatic.
 
-#### 5.2.1 Using `systemd` for configuration synchronization (RHEL)
+#### 5.2.1 RHEL: Use `systemd` for configuration synchronization
 
 Add `xroad-sync` as a `systemd` service.
 
@@ -614,17 +614,17 @@ WantedBy=timers.target
 
 Configure SELinux to allow `rsync` to be run as a `systemd` service
 
-```bash
+```
 setsebool -P rsync_client 1
 setsebool -P rsync_full_access 1
 ```
 Enable the services:
-```bash
+```
 systemctl enable xroad-sync.timer xroad-sync.service
 systemctl start xroad-sync.timer
 ```
 
-#### 5.2.2 Using upstart and cron for configuration synchronization(Ubuntu)
+#### 5.2.2 Ubuntu: Use upstart and cron for configuration synchronization
 
 Create the main upstart task for syncing.
 
