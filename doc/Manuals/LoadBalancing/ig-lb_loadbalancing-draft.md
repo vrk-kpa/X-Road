@@ -64,7 +64,6 @@ knowledge of Linux server management, computer networks, database administration
 functioning principles.
 
 ### 1.2 References
-**FIXME:** check links
 
 | Document Id    |  Document                                                                                |
 |:--------------:|:-----------------------------------------------------------------------------------------|
@@ -94,7 +93,8 @@ Carefully consider these assumptions before deciding if the supported features a
 
 <a name="basic_assumptions"></a>
 __Basic Assumptions about the load balanced environment:__
-* Adding or removing nodes to or from the cluster is infrequent. New nodes need to be added manually.
+* Adding or removing nodes to or from the cluster is infrequent. New nodes need to be added manually and this takes some
+  time.
 * Configuration changes are relatively infrequent and some downtime in ability to change configuration can be tolerated.
   (The cluster uses a master-slave model and the configuration master is not replicated.)
   
@@ -103,18 +103,18 @@ __Consequences of the selected implementation model:__
   a member of the cluster. The replication is one-way from master to slaves and the slaves should treat the configuration
   as read-only.
 * The cluster nodes can continue operation if the master fails but the configuration can not be changed until:
-  - the master becomes back on-line, or
-  - some other node is manually promoted to the master. 
+  - the master becomes back online, or
+  - some other node is manually promoted to be the master.
 * If a node fails, the messages being processed by that node are lost.
   - It is the responsibility of the load balancer component to detect the failure and route further messages to other nodes.
     Because there potentially is some delay before the failure is noticed, some messages might be lost due to the delay.
-  - Recovering any lost messages is currently out-of-scope of the support implementation.
+  - Recovering lost messages is not supported by the load balancing support.
 * Configuration updates are asynchronous and the cluster state is eventually consistent.
 * If the master node fails or communication is interrupted during a configuration update, each slave should have a valid
   configuration, but the cluster state can be inconsistent (some members might have the old configuration while some might
   have received all the changes).
   
-### 2.2 Communication with external security servers: The cluster from the point of view of a cluster security server client
+### 2.2 Communication with external servers and services: The cluster from the point of view of a client or service
 
 When external security servers communicate with the cluster, they see only the public IP address of the cluster which is
 registered to the global configuration as the security server address. From the caller point of view, this case is analogous
@@ -161,7 +161,7 @@ instance uses some memory.
 | ------------------------------- | -------------------- | -------------------------------------------------- |
 | keyconf and the software token  | **replicated**       |  `rsync+ssh`  (scheduled)                          |
 
-Previously, any external modification to `/etc/xroad/signer/keyconf.xml` is overwritten by the X-Road signer process if
+Previously, any external modification to `/etc/xroad/signer/keyconf.xml` was overwritten by the X-Road signer process if
 it was running. Therefore, replicating the signer configuration without service disruptions would have required taking the
 cluster members offline one-by-one. The load balancing support adds the possibility for external modifications to the
 keyconf.xml to be applied on slave nodes without service disruptions. The actual state replication is done with a scheduled
@@ -203,7 +203,7 @@ your purposes.
 
 In order to properly set up the data replication, the slave nodes must be able to connect to:
 * the master server using SSH (tcp port 22), and
-* the master `serverconf` database (e.g. tcp port 5433) using certificate authentication.
+* the master `serverconf` database (e.g. tcp port 5433).
 
 
 ### 3.2 Master installation
@@ -334,11 +334,12 @@ Fetching health check response timed out for: Authentication key OCSP status
 
 
 ## 4. Database replication setup
-```
-For more information for PostgreSQL replication, refer to the official documentation:
-https://www.postgresql.org/docs/9.2/static/high-availability.html
-Note that the PostgreSQL version distributed on RHEL and Ubuntu differ. Currently RHEL 7 distributes PostgreSQL version 9.2 and Ubuntu 14.04 version 9.3; the replication configuration is the same for both versions.
-```
+
+For technical details on the PostgreSQL replication, refer to the [official documentation](https://www.postgresql.org/docs/9.2/static/high-availability.html).
+Note that the version of PostgreSQL distributed with RHEL and Ubuntu is different. At the time of writing, RHEL 7
+distributes PostgreSQL version 9.2 and Ubuntu distributes 14.04 version 9.3; the replication configuration is the same
+for both versions.
+
 
 ### 4.1 Setting up TLS certificates for database authentication
 ( See https://www.postgresql.org/docs/9.2/static/auth-methods.html#AUTH-CERT for details )
