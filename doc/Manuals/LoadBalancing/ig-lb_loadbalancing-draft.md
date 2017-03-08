@@ -336,50 +336,61 @@ Fetching health check response timed out for: Authentication key OCSP status
 ## 4. Database replication setup
 
 For technical details on the PostgreSQL replication, refer to the [official documentation](https://www.postgresql.org/docs/9.2/static/high-availability.html).
-Note that the version of PostgreSQL distributed with RHEL and Ubuntu is different. At the time of writing, RHEL 7
+Note that the versions of PostgreSQL distributed with RHEL and Ubuntu are different. At the time of writing, RHEL 7
 distributes PostgreSQL version 9.2 and Ubuntu distributes 14.04 version 9.3; the replication configuration is the same
 for both versions.
 
 
 ### 4.1 Setting up TLS certificates for database authentication
-( See https://www.postgresql.org/docs/9.2/static/auth-methods.html#AUTH-CERT for details )
+This section describes how to create and set up certificate authentication between the slave and master database instances.
 
-1. Generate the Certificate Authority key & self-signed certificate for the root-of-trust:
+For further details on the certificate authentication, see the
+[PostgreSQL documentation](https://www.postgresql.org/docs/9.2/static/auth-methods.html#AUTH-CERT).
+
+
+1. Generate the Certificate Authority key and a self-signed certificate for the root-of-trust:
+
    ```
    openssl req -new -x509 -days 7300 -nodes -sha256 -out master.crt -keyout master.key -subj '/O=cluster/CN=master'
    ```
-   * (subject name does not really matter here)
-   * keep the master.key in a safe place
-2. Generate keys and certificates signed by the CA for each postgresql instance (including master, do not use the CA
-   certificate and key as the database certificate and key).
+   The subject name does not really matter here. Rembember to keep the master.key in a safe place.
+
+2. Generate keys and certificates signed by the CA for each postgresql instance, including the master. Do not use the CA
+   certificate and key as the database certificate and key.
+
    ```
    openssl req -new -nodes -days 7300 -keyout server.key -out server.csr -subj "/O=cluster/CN=<nodename>"
    ```
+
    **Note:** The `<nodename>` must match a replication user name; otherwise the subject name does not matter
+
    ```
    openssl x509 -req -in server.csr -CAcreateserial -CA master.crt -CAkey master.key -days 7300 -out server.crt
    ```
-3. Copy the certificates to `/etc/xroad/postgresql` on each cluster instance
-   **Note:** restoring a backup will reset the permissions: fix backup restore) <-- **FIXME:** what? what is "fix backup restore?"
+
+3. Copy the certificates to `/etc/xroad/postgresql` on each cluster instance:
+
    ```bash
    sudo mkdir -p -m 0755 /etc/xroad/postgresql
    sudo chmod o+x /etc/xroad
    ```
-   Copy the certificate, then:
+   Copy the certificates, then copy one server key per instance so that each instance has a unique key:
+
    ```bash
    sudo chown postgres /etc/xroad/postgresql/server.key
    sudo chmod 400 /etc/xroad/postgresql/server.key
    ```
 
-```
-Alternatively, one can use an existing internal CA for managing the certificates.
-One should create a sub-CA for the database cluster root-of-trust and use that for issuing the slave and master certificates.
-```
+> Alternatively, one can use an existing internal CA for managing the certificates.
+> One should create a sub-CA for the database cluster root-of-trust and use that for issuing the slave and master certificates.
 
-### 4.2 Creating a separate PostgreSQL instance for serverconf database
 
-#### 4.2.1 RHEL
-Create new systemctl service unit for the new database. As root, execute the following scripts:
+### 4.2 Creating a separate PostgreSQL instance for the `serverconf` database
+
+#### 4.2.1 on RHEL
+
+Create a new `systemctl` service unit for the new database. As root, execute the following scripts:
+
 ```
 cat <<EOF >/etc/systemd/system/postgresql-serverconf.service
 .include /lib/systemd/system/postgresql.service
@@ -388,28 +399,31 @@ Environment=PGPORT=5433
 Environment=PGDATA=/var/lib/pgsql/serverconf
 EOF
 ```
-Create database and configure SELinux:
+Create the database and configure SELinux:
+
 ```
 PGSETUP_INITDB_OPTIONS="--auth-local=peer --auth-host=md5" postgresql-setup initdb postgresql-serverconf
 semanage port -a -t postgresql_port_t -p tcp 5433
 systemctl enable postgresql-serverconf
 ```
 
-#### 4.2.2 Ubuntu
+#### 4.2.2 on Ubuntu
+
 ```bash
 sudo -u postgres pg_createcluster -p 5433 9.3 serverconf
 ```
-(In the above command 9.3 is the postgresql version. Use pg_lsclusters to find out what version(s) are available)
+In the above command, `9.3` is the postgresql version. Use `pg_lsclusters` to find out what version(s) are available.
  
-**FIXME:** boksi
-PostgreSQL configuration location
-```
-On RHEL, PostgreSQL config files are located in the PGDATA directory (/var/lib/pgql/serverconf).
-Ubuntu keeps the config in /etc/postgresql/<version>/<cluster name>, e.g. /etc/postgresql/9.3/serverconf
-```
+
+**PostgreSQL configuration location:**
+> On RHEL, PostgreSQL config files are located in the `PGDATA` directory (`/var/lib/pgql/serverconf`).
+> Ubuntu keeps the config in `/etc/postgresql/<version>/<cluster name>`, e.g. `/etc/postgresql/9.3/serverconf`
+
 
 ### 4.3 Configuring the master instance for replication
-Edit postgresql.conf and set the following options:
+
+Edit `postgresql.conf` and set the following options:
+
 ```
 ssl = on
 ssl_ca_file   = '/etc/xroad/postgresql/master.crt'
@@ -421,56 +435,75 @@ wal_level = hot_standby
 max_wal_senders   = 3   # should be ~ number of slaves plus some small number. Assuming here two slaves.
 wal_keep_segments = 8   # keep some wal segments so that slaves that are offline can catch up
 ```
-Edit pg_hba.conf and enable connections to the replication pseudo database using client certificates (see authentication setup). **FIXME:** link
+
+Edit `pg_hba.conf` and enable connections to the replication pseudo database using client certificates (see chapter 
+[4.1](#41-setting-up-tls-certificates-for-database-authentication)) for the authentication setup.
+
 ```
 hostssl     replication     +slavenode  samenet     cert
 ```
-Note. CN field in certificate subject must match a replication user name in postgresql. (https://www.postgresql.org/docs/9.3/static/auth-pg-hba-conf.html)
-"samenet" above assumes that the slaves will be in the same subnet as the master.
+**Note:** The CN field in the certificate subject must match a replication user name in postgresql. See the [PostgreSQL
+ documentation](https://www.postgresql.org/docs/9.3/static/auth-pg-hba-conf.html) for more details.
+
+The `samenet` above assumes that the slaves will be in the same subnet as the master.
+
 Start the master instance:
+
 ```bash
 systemctl start postgresql-serverconf | /etc/init.d/postgresql start
 ```
 
-Create replication user(s) (password authentication disabled):
+Create the replication user(s) (password authentication disabled):
 ```bash
 sudo -u postgres psql -p 5433 -c "CREATE ROLE slavenode NOLOGIN";
 sudo -u postgres psql -p 5433 -c "CREATE USER <nodename> REPLICATION PASSWORD NULL IN ROLE slavenode";
 ```
 
-Create serverconf user for local serverconf access:
+Create `serverconf` user for local `serverconf` access:
+
 ```bash
 sudo -u postgres psql -p 5433 -c "CREATE USER serverconf PASSWORD '<password>'";
 ```
 
-Copy the serverconf database from the default instance to the new instance:
+Copy the `serverconf` database from the default instance to the new instance:
+
 ```bash
 sudo -u postgres pg_dump -C serverconf | sudo -u postgres psql -p 5433 -f -
 ```
 
 ### 4.5 Configuring the slave instance for replication
-( prerequisites: separate postgresql instance created, SSL keys and certificates in /etc/xroad/postgresql )
-Goto the postgresql data directory:
+
+Prerequisites:
+* A separate postgresql instance has been created.
+* TLS keys and certificates have been configured in `/etc/xroad/postgresql` as described in section 
+[4.1 Setting up TLS certificates for database authentication](#41-setting-up-tls-certificates-for-database-authentication)
+
+
+Go to the postgresql data directory:
  * RHEL: `/var/lib/pgsql/serverconf`
  * Ubuntu: `/var/lib/postgresql/9.3/serverconf`
-**NB** Clear the data directory:
+ 
+Clear the data directory:
+
  ```bash
  rm -rf *
  ```
  
-Do a base backup
+Do a base backup with `pg_basebackup`:
 ```bash
 sudo -u postgres PGSSLMODE=verify-ca PGSSLROOTCERT=/etc/xroad/postgresql/master.crt PGSSLCERT=/etc/xroad/postgresql/server.crt PGSSLKEY=/etc/xroad/postgresql/server.key pg_basebackup -h <master> -p 5433 -U <nodename> -D .
 ```
-Add `recovery.conf` (in the data directory)
+Add the following `recovery.conf` to the data directory:
+
 ```
 standby_mode = 'on'
 primary_conninfo = 'host=<master> port=5433 user=<nodename> sslmode=verify-ca sslcert=/etc/xroad/postgresql/server.crt sslkey=/etc/xroad/postgresql/server.key sslrootcert=/etc/xroad/postgresql/master.crt'
 trigger_file = '/var/lib/xroad/postgresql.trigger'
 ```
-Set owner to postgres:postgres, mode 0600
+Set owner of the `recovery.conf` to `postgres:postgres`, mode `0600`
 
-Modify postgresql.conf
+Modify `postgresql.conf`:
+
 ```
 ssl = on
 ssl_ca_file   = '/etc/xroad/postgresql/master.crt'
@@ -487,57 +520,64 @@ listen_addresses = localhost
 hot_standby = on
 hot_standby_feedback = on
 ```
-Notice that on RHEL, during the `pg_basebackup` the `postgresql.conf` was copied from the master node so one should
-disable WAL sender parameters and check that listen_addresses is localhost only.
+Notice that on RHEL, during `pg_basebackup` the `postgresql.conf` was copied from the master node so the WAL sender
+parameters should be disabled. Also check that `listen_addresses` is localhost-only.
  
-Start the instance
-RHEL:
+Start the database instance
+
+**RHEL:**
 ```bash
 systemctl start postgresql-serverconf
 ```
-Ubuntu:
+**Ubuntu:**
 ```bash
 /etc/init.d/postgresql start
 ```
- (note that this starts all configured database instances)
+Note that on Ubuntu, the command starts all configured database instances.
  
 ## 5. Configuring data replication with rsync over SSH
 
-### 5.1 Set up SSH between slave and master
-On master, set up a system user that can read `/etc/xroad`
-A system user has password disabled (can not log in normally)
-Ubuntu:
+### 5.1 Set up SSH between slaves and the master
+On the master, set up a system user that can read `/etc/xroad`. A system user has their password disabled and can not log
+in normally.
+
+**Ubuntu:**
+
 ```bash
 adduser --system --ingroup xroad xroad-slave
 ```
-RHEL:
-```bash
-useradd -r -m -g xroad xroad-slave
-```
+**RHEL:**
 
-Create `.ssh` folder and authorized keys
+``bash
+seradd -r -m -g xroad xroad-slave
+``
+
+
+Create an `.ssh` folder and the authorized keys
 ```bash
 sudo mkdir -m 755 -p /home/xroad-slave/.ssh && sudo touch /home/xroad-slave/authorized_keys
  ```
-**Note** (warning) The owner should be `root` and `xroad-slave` should not have write permission to the file.
-On slave(s), create an ssh key (`ssh-keygen`) without a passphrase for the xroad user and add the public keys in
-the `/home/xroad-slave/.ssh/authorized_keys` (on master)
+**Warning:**  The owner of the file should be `root` and `xroad-slave` should not have write permission to the file.
 
-On slave(s), connect to the master host using ssh and accept the host key.
+On the slave nodes, create an ssh key (`ssh-keygen`) without a passphrase for the `xroad` user and add the public keys in
+the `/home/xroad-slave/.ssh/authorized_keys` of the master node. To finish, from slave nodes, connect to the master host
+using `ssh` and accept the host key.
 
-### 5.2 Set up periodic configuration sync
+### 5.2 Set up periodic configuration synchronization
 
-The following configuration sync the configuration in `/etc/xroad` periodically (once per minute) and before the services
-are started. E.g. during boot, if the master server is available, the configuration will be synced before xroad-proxy is
-started. If the master is down, there will be a small delay before the services are started.
+The following configuration will synchronize the configuration in `/etc/xroad` periodically (once per minute) and before
+the services are started. That means that during boot, if the master server is available, the configuration will be
+synchronized before the `xroad-proxy` service is started. If the master node is down, there will be a small delay before
+the services are started.
 
-Note that only modifications to the signer keyconf will be applied when the system is running. Other configuration changes
-require restarting the services, which is not automatic.
+> Note that only modifications to the signer keyconf will be applied when the system is running. Other configuration changes
+> require restarting the services, which is not automatic.
 
-#### 5.2.1 Using systemd (RHEL)
-Add xroad-sync systemd service:
+#### 5.2.1 Using `systemd` for configuration synchronization (RHEL)
 
-`/etc/systemd/system/xroad-sync.service`
+Add `xroad-sync` as a `systemd` service.
+
+Create a new file `/etc/systemd/system/xroad-sync.service`:
 ```
 [Unit]
 Description=X-Road Sync Task
@@ -558,9 +598,9 @@ WantedBy=multi-user.target
 WantedBy=xroad-proxy.service
 ```
 
-Add timer for periodic updates:
+Add a timer for periodic updates.
 
-`/etc/systemd/xroad-sync.timer`
+Create a new file `/etc/systemd/xroad-sync.timer`:
 
 ```
 [Unit]
@@ -572,22 +612,23 @@ OnUnitActiveSec=60
 WantedBy=timers.target
 ```
 
-Configure SELinux to allow rsync to be run as a systemd service
+Configure SELinux to allow `rsync` to be run as a `systemd` service
+
 ```bash
 setsebool -P rsync_client 1
 setsebool -P rsync_full_access 1
 ```
-Enable services:
+Enable the services:
 ```bash
 systemctl enable xroad-sync.timer xroad-sync.service
 systemctl start xroad-sync.timer
 ```
 
-#### 5.2.2 Using upstart and cron (Ubuntu)
+#### 5.2.2 Using upstart and cron for configuration synchronization(Ubuntu)
 
-Main upstart task for syncing:
+Create the main upstart task for syncing.
 
-`/etc/init/xroad-sync.conf`
+Create a new file: `/etc/init/xroad-sync.conf`:
 ```
 # xroad-sync
 env XROAD_USER={{ xroad_slave_ssh_user }}
@@ -598,10 +639,9 @@ script
 end script
 ```
 
-Helper task that ensures that the sync task is executed before the services are started.
+Create a helper task that ensures that the sync task is executed before the services are started.
 
-`/etc/init/xroad-sync-wait`
-
+Create a new file `/etc/init/xroad-sync-wait`:
 ```
 # wait for xroad-sync to complete before starting services
 start on starting xroad-proxy or starting xroad-jetty or starting xroad-signer or starting xroad-confclient
@@ -616,27 +656,27 @@ script
 end script
 ```
 
-Cron job to periodically start the sync task (upstart does not have a timer facility)
-`/etc/cron.d/xroad-state-sync`
+Add a cron job to periodically start the sync task as upstart does not have a timer facility.
+
+Create a new file `/etc/cron.d/xroad-state-sync`:
 ```
 * * * * * root /sbin/initctl --quiet start xroad-sync
 ```
 
-
-rsync options **FIXME:** add infobox
-
-* `--delay-updates` and `--delete-delay` make the sync more atomic by delaying modifications until data has been
-downloaded (not fully atomic, since the files will be moved into place one by one). If the sync is disrupted, no
-modifications will be made.
-* low connect timeout (5 seconds) and receive timeout (10 seconds) ensure that the sync won't hang if e.g. network
-connection fails
+**A note about the `rsync` options:**
+>
+>* `--delay-updates` and `--delete-delay` make the sync more atomic by delaying modifications until data has been
+> downloaded. It is not fully atomic, however, since the files will be moved into place one by one. If the synchronization
+> is disrupted, no modifications will be made.
+> * low connect timeout (5 seconds) and receive timeout (10 seconds) ensure that the synchronization won't hang if e.g.
+> a network connection fails.
 
 
 #### 5.3 Set up log rotation for the sync log
 
-Add the following config file (the example rotates logs daily, keeps logs for 7 days which should be enough for troubleshooting).
+The following configuration example rotates logs daily and keeps logs for 7 days which should be enough for troubleshooting.
 
-`/etc/logrotate.d/xroad-slave-sync`
+Create a new file `/etc/logrotate.d/xroad-slave-sync`:
 
 ```
 /var/log/xroad/slave-sync.log {
