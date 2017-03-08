@@ -168,7 +168,7 @@ keyconf.xml to be applied on slave nodes without service disruptions. The actual
 rsync over ssh. This might take a few minutes so a slight delay in propagating the changes must be tolerated by the
 clustered environment. A small delay should usually cause no problems as new keys and certificates are unlikely to be used
 immediately for X-Road messaging. Changes to the configuration are also usually relatively infrequent. These were one of
-the [basic assumptions](#basic_assumption) about the environment. Users should make sure this holds true for them.
+the [basic assumptions](#basic_assumptions) about the environment. Users should make sure this holds true for them.
 
 The slave nodes use the `keyconf.xml` in read-only mode, no changes are persisted to disk. Slaves reload the configuration
 from disk periodically and apply the changes to their running in-memory configuration.
