@@ -4,9 +4,9 @@ Version: 1.0
 Doc. ID: IG-XLB
 
 
-| Date       | Version     | Description                                             | Author             |
-|------------|-------------|---------------------------------------------------------|--------------------|
-| 9.3.2017   | 1.0         | Initial version                                         | Olli Lindgren      |
+| Date       | Version     | Description                                             | Author                      |
+|------------|-------------|---------------------------------------------------------|-----------------------------|
+| 9.3.2017   | 1.0         | Initial version                                         | Jarkko Hyöty, Olli Lindgren |
 
 
 ## Table of Contents
