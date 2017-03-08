@@ -1,4 +1,4 @@
-# X-Road: External Load Balancer Installation Guide (Work in progress)
+# X-Road: External Load Balancer Installation Guide
 
 Version: 1.0  
 Doc. ID: IG-XLB
@@ -6,7 +6,7 @@ Doc. ID: IG-XLB
 
 | Date       | Version     | Description                                             | Author             |
 |------------|-------------|---------------------------------------------------------|--------------------|
-| X.3.2017   | 1.0         | Initial version                                         | Olli Lindgren      |
+| 9.3.2017   | 1.0         | Initial version                                         | Olli Lindgren      |
 
 
 ## Table of Contents
