@@ -21,8 +21,8 @@ Doc. ID: IG-XLB
   * [2.1 Goals and assumptions](#21-goals-and-assumptions)
   * [2.2 Communication with external servers and services: The cluster from the point of view of a client or service](#22-communication-with-external-servers-and-services-the-cluster-from-the-point-of-view-of-a-client-or-service)
   * [2.3 State replication from the master to the slaves](#23-state-replication-from-the-master-to-the-slaves)
-    + [2.3.1 Serverconf database replication](#231-serverconf-database-replication)
-    + [2.3.2 Messagelog database replication](#232-messagelog-database-replication)
+    + [2.3.1 `serverconf` database replication](#231-serverconf-database-replication)
+    + [2.3.2 `messagelog` database replication](#232-messagelog-database-replication)
     + [2.3.3 Key configuration and software token replication from `/etc/xroad/signer/*`](#233-key-configuration-and-software-token-replication-from-etcxroadsigner)
     + [2.3.4 Other server configuration parameters from `/etc/xroad/*`](#234-other-server-configuration-parameters-from-etcxroad)
     + [2.3.5 OCSP response replication from `/var/cache/xroad/`](#235-ocsp-response-replication-from-varcachexroad)
@@ -135,7 +135,7 @@ as needed.
 ![alt-text](load_balancing_state_replication.png)
 
                                                                                                 
-#### 2.3.1 Serverconf database replication
+#### 2.3.1 `serverconf` database replication
 | Data            | Replication          | Replication method                                 |
 | ------------------- | -------------------- | -------------------------------------------------- |
 | serverconf database | **replication required** | PostgreSQL streaming replication (Hot standby) |
@@ -145,7 +145,7 @@ is all-or-nothing, it is not possible exclude databases from the replication. Th
 non-replicated messagelog databases need to be separated to different instances.
 
 
-#### 2.3.2 Messagelog database replication
+#### 2.3.2 `messagelog` database replication
 | Data               | Replication          | Replication method                                 |
 | ------------------- | -------------------- | -------------------------------------------------- |
 | messagelog database | **not replicated** |                                                      |
