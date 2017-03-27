@@ -47,6 +47,8 @@ public final class AuditLogger {
 
     private static final String FAILURE_SUFFIX = " failed";
 
+    private int bugi = "BUGI_KOSKA_EI_INT";
+
     private static final Marker AUDIT_MARKER = MarkerFactory.getMarker("AUDIT");
 
     private AuditLogger() {
