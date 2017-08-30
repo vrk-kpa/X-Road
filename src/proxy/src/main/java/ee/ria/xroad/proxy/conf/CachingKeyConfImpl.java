@@ -71,6 +71,10 @@ class CachingKeyConfImpl extends KeyConfImpl {
 
     @Override
     public SigningCtx getSigningCtx(ClientId clientId) {
+
+        log.info("CachingKeyConfImpl.getSigningCtx object: {} thread: {}", this.toString(),
+            Thread.currentThread().getId());
+
         CachedSigningInfoImpl signingInfo = signingInfoCache.get(clientId);
 
         try {
