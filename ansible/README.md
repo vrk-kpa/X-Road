@@ -37,6 +37,19 @@ Ansible searches for variables from `group_vars/example.yml` when initializing h
 ansible-playbook -i hosts/example_xroad_hosts.txt xroad_init.yml
 ```
 
+This installs or updates all X-Road related packages to latest versions from package repositories. 
+For X-Road's own packages, repository is 
+`http://www.nic.funet.fi/pub/csc/x-road/client/ubuntu-prod-current` 
+or 
+`http://www.nic.funet.fi/pub/csc/x-road/client/rhel7-prod-current`
+unless overridden using Ansible variables. 
+
+
+ubuntu_repo_url: "http://www.nic.funet.fi/pub/csc/x-road/client/ubuntu-prod-current/packages"
+ubuntu_apt_key:  "{{ubuntu_repo_url}}/dists/stable/palveluvayla@gofore.com.asc"
+ubuntu_apt_repo: "deb {{ubuntu_repo_url}} stable main"
+unless overridden using properties.
+
 ## 4. Development using LXD
 
 On Linux it is possible to use the LXD container hypervisor for fast testing and development.
