@@ -38,7 +38,8 @@ ansible-playbook -i hosts/example_xroad_hosts.txt xroad_init.yml
 ```
 
 This installs or updates **all X-Road related packages** to latest versions **from package repositories**. 
-For X-Road's own packages, repository is 
+
+For X-Road's own packages, repository is either
 `http://www.nic.funet.fi/pub/csc/x-road/client/ubuntu-prod-current` 
 or 
 `http://www.nic.funet.fi/pub/csc/x-road/client/rhel7-prod-current`
