@@ -100,7 +100,7 @@ ansible-playbook  -i hosts/lxd_hosts_from_local.txt   xroad_dev_partial.yml   -e
 ```
 
 This updates the **selected modules (jars or wars)** to ones compiled locally. 
-**No git commits are needed** to see updates.
+**No git commits are needed** to see changes.
 
 The modules are listed in dicts common_modules.yml, cs_modules.yml, cp_modules.yml and ss_modules.yml.
 
