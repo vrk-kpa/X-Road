@@ -62,7 +62,7 @@ sudo lxd init (use bridge network configuration and turn on nat)
 ```
 Study the files hosts/lxd_hosts.txt and hosts/lxd_hosts_from_local.txt and change repository and host names if needed. The LXD hosts are first created with the name given. Under group lxd-servers is the host, normally localhost.
 
-Install ansible to local LXD containers from public repository with:
+Install packages to local LXD containers from public repository with:
 
 ```
 ansible-playbook  -i hosts/lxd_hosts.txt xroad_init.yml
