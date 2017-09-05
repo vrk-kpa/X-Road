@@ -37,7 +37,7 @@ Ansible searches for variables from `group_vars/example.yml` when initializing h
 ansible-playbook -i hosts/example_xroad_hosts.txt xroad_init.yml
 ```
 
-This installs or updates all X-Road related packages to latest versions from package repositories. 
+This installs or updates **all X-Road related packages** to latest versions **from package repositories**. 
 For X-Road's own packages, repository is 
 `http://www.nic.funet.fi/pub/csc/x-road/client/ubuntu-prod-current` 
 or 
@@ -75,7 +75,7 @@ First make sure that docker and docker-py are installed. Docker is used for buil
 ansible-playbook  -i hosts/lxd_hosts_from_local.txt xroad_dev.yml
 ```
 
-This updates all X-Road packages to latest versions from locally built packages (as long as `compile-servers` group in ansible inventory = `localhost`). 
+This updates **all X-Road related packages to latest versions**, using **locally built X-Road packages** (as long as `compile-servers` group in ansible inventory = `localhost`). 
 Package version names are formed using current git commit timestamp and hash. This means that
 
 * if you only make local changes without performing a git commit, package names and version numbers are
@@ -84,7 +84,7 @@ not changed - and executing xroad_dev playbook will keep the old packages intact
 using the new version number - and all local modifications (whether they were included in the commit or not)
 will be deployed
 
-In short, to see changes, a git commit needs to be done.
+In short, to see changes, **a git commit needs to be done**.
  
 ### Partial compilation and deployment
 
@@ -97,6 +97,9 @@ It is also possible to compile and install several modules (jars or wars). The f
 ```
 ansible-playbook  -i hosts/lxd_hosts_from_local.txt   xroad_dev_partial.yml   -e selected_modules=common-util,proxy-ui,signer
 ```
+
+This updates the **selected modules (jars or wars)** to ones compiled locally. 
+**No git commits are needed** to see updates.
 
 The modules are listed in dicts common_modules.yml, cs_modules.yml, cp_modules.yml and ss_modules.yml.
 
