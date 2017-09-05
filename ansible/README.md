@@ -74,6 +74,18 @@ First make sure that docker and docker-py are installed. Docker is used for buil
 ```
 ansible-playbook  -i hosts/lxd_hosts_from_local.txt xroad_dev.yml
 ```
+
+This updates all X-Road packages to latest versions from locally built packages (as long as `compile-servers` group in ansible inventory = `localhost`). 
+Package version names are formed using current git commit timestamp and hash. This means that
+
+* if you only make local changes without performing a git commit, package names and version numbers are
+not changed - and executing xroad_dev playbook will keep the old packages intact 
+* if you perform a git commit (of any kind), all local modifications will be packaged and deployed 
+using the new version number - and all local modifications (whether they were included in the commit or not)
+will be deployed
+
+In short, to see changes, a git commit needs to be done.
+ 
 ### Partial compilation and deployment
 
 For fast development, you can compile and install modules separately. The ansible playbook *xroad_dev_partial.yml* offers this. For example, if you make a change to a Java or Ruby file under proxy-ui, use the following command to compile the war and deploy it to the security servers.
