@@ -23,9 +23,10 @@
 package ee.ria.xroad.proxy.clientproxy;
 
 import ee.ria.xroad.common.CodedException;
-import ee.ria.xroad.common.opmonitoring.OpMonitoringData;
 import ee.ria.xroad.common.SystemProperties;
+import ee.ria.xroad.common.opmonitoring.OpMonitoringData;
 import ee.ria.xroad.proxy.clientproxy.FastestSocketSelector.SocketInfo;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpHost;
@@ -36,6 +37,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSessionContext;
 import javax.net.ssl.SSLSocket;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -44,6 +46,7 @@ import java.net.URI;
 import java.nio.channels.UnresolvedAddressException;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.Objects;
 
 import static ee.ria.xroad.common.ErrorCodes.X_INTERNAL_ERROR;
 import static ee.ria.xroad.common.ErrorCodes.X_NETWORK_ERROR;
@@ -75,6 +78,7 @@ class FastestConnectionSelectingSSLSocketFactory
      */
     private static final String ID_SELECTED_TARGET =
             "ee.ria.xroad.serverproxy.selectedtarget";
+    public static final int CACHED_TIMEOUT = 5000;
 
     private final javax.net.ssl.SSLSocketFactory socketfactory;
 
@@ -121,15 +125,18 @@ class FastestConnectionSelectingSSLSocketFactory
         }
 
         // Select the fastest address if more than one address is provided.
-        SocketInfo selectedSocket = connect(addresses, context, timeout);
+        SocketInfo selectedSocket = connect(addresses, context, cachedSSLSessionURI == null ? timeout : CACHED_TIMEOUT);
         if (selectedSocket == null) {
             if (cachedSSLSessionURI != null) {
                 // could not connect to cached host, try all others.
                 // .. and make sure the previous "fastest" host does not come up as "fastest" anymore
                 cachedHostInfo.clearCachedURIForSession();
+                selectedSocket = connect(
+                        //swap the failed address to the last
+                        swap(addressesFromContext, 0, addressesFromContext.length - 1),
+                        context,
+                        timeout);
 
-                selectedSocket =
-                        connect(addressesFromContext, context, timeout);
                 if (selectedSocket == null) {
                     throw couldNotConnectException(addresses);
                 }
@@ -145,9 +152,24 @@ class FastestConnectionSelectingSSLSocketFactory
         updateOpMonitoringData(context, selectedSocket);
 
         SSLSocket sslSocket = wrapToSSLSocket(selectedSocket.getSocket());
-        prepareAndVerify(sslSocket, selectedSocket.getUri(), context);
+
+        try {
+            prepareAndVerify(sslSocket, selectedSocket.getUri(), context);
+        } catch (Exception e) {
+            if (Objects.equals(selectedSocket.getUri(), cachedSSLSessionURI)) {
+                cachedHostInfo.clearCachedURIForSession();
+            }
+            throw e;
+        }
 
         return sslSocket;
+    }
+
+    private static <T> T[] swap(final T[] array, final int first, final int second) {
+        final T tmp = array[first];
+        array[first] = array[second];
+        array[second] = tmp;
+        return array;
     }
 
     private static void updateOpMonitoringData(HttpContext context,
@@ -240,19 +262,15 @@ class FastestConnectionSelectingSSLSocketFactory
         Enumeration<byte[]> ids = sessionCtx.getIds();
         while (ids.hasMoreElements()) {
             byte[] id = ids.nextElement();
-
             SSLSession session = sessionCtx.getSession(id);
-            if (session != null) {
-                for (URI address : addresses) {
-                    if (isSessionHost(session, address)) {
-                        log.trace("Found cached session for {}", address);
-                        return new CachedSSLSessionHostInformation(address, session);
-                    }
-                }
+            // just look for the first host in the list
+            if (session != null && isSessionHost(session, addresses[0])) {
+                log.trace("Found cached session to", addresses[0]);
+                return new CachedSSLSessionHostInformation(addresses[0], session);
             }
         }
 
-        return new CachedSSLSessionHostInformation();
+        return CachedSSLSessionHostInformation.NONE;
     }
 
     private static class CachedSSLSessionHostInformation {
@@ -279,6 +297,8 @@ class FastestConnectionSelectingSSLSocketFactory
                 sslSession.removeValue(ID_SELECTED_TARGET);
             }
         }
+
+        static final CachedSSLSessionHostInformation NONE = new CachedSSLSessionHostInformation();
     }
 
     private static URI[] getAddressesFromContext(HttpContext context) {
@@ -297,8 +317,7 @@ class FastestConnectionSelectingSSLSocketFactory
             URI sslHost = (URI) session.getValue(ID_SELECTED_TARGET);
             return sslHost != null && sslHost.equals(host);
         } catch (Exception e) {
-            log.error("Error checking if host {} is in session ({}).", host,
-                    session);
+            log.error("Error checking if host {} is in session ({}).", host, session);
             log.error("Exception :{}", e);
         }
 

@@ -22,14 +22,14 @@
  */
 package ee.ria.xroad.proxy.testsuite.testcases;
 
-import java.util.Arrays;
-import java.util.Collection;
-
 import ee.ria.xroad.common.conf.globalconf.GlobalConf;
 import ee.ria.xroad.common.identifier.ClientId;
 import ee.ria.xroad.proxy.testsuite.Message;
 import ee.ria.xroad.proxy.testsuite.SslMessageTestCase;
 import ee.ria.xroad.proxy.testsuite.TestGlobalConf;
+
+import java.util.Arrays;
+import java.util.Collection;
 
 /**
  * This actually tests, if the only responsive hostname is selected from the
@@ -52,7 +52,7 @@ public class SslSelectFastestProxy extends SslMessageTestCase {
         GlobalConf.reload(new TestGlobalConf() {
             @Override
             public Collection<String> getProviderAddress(ClientId provider) {
-                return Arrays.asList("foobar", "localhost", "1.0.0.1");
+                return Arrays.asList("127.0.0.42", "localhost", "1.0.0.1");
             }
         });
     }

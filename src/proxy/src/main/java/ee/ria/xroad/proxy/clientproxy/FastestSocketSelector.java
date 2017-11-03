@@ -22,7 +22,10 @@
  */
 package ee.ria.xroad.proxy.clientproxy;
 
-import static org.apache.commons.io.IOUtils.closeQuietly;
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -33,11 +36,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.Set;
 
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import static org.apache.commons.io.IOUtils.closeQuietly;
 
 /**
  * Given a list of addresses, selects the first one to respond.
@@ -63,15 +64,11 @@ class FastestSocketSelector {
 
         Selector selector = Selector.open();
 
-        SocketInfo selectedSocket = initConnections(selector);
-        if (selectedSocket != null) {
-            return selectedSocket;
-        }
-
+        final SelectionKey preferred = initConnections(selector);
         URI selectedAddress = null;
         SocketChannel channel = null;
         try {
-            SelectionKey key = selectFirstConnectedSocketChannel(selector);
+            SelectionKey key = selectFirstConnectedSocketChannel(selector, preferred);
             if (key == null) {
                 return null;
             }
@@ -89,38 +86,40 @@ class FastestSocketSelector {
         if (channel != null) {
             channel.configureBlocking(true);
             return new SocketInfo(selectedAddress, channel.socket());
+
         }
 
         return null;
     }
 
-    private SelectionKey selectFirstConnectedSocketChannel(Selector selector)
+    private SelectionKey selectFirstConnectedSocketChannel(Selector selector, SelectionKey preferred)
             throws IOException {
         log.trace("selectFirstConnectedSocketChannel()");
 
         while (!selector.keys().isEmpty()) {
-            if (selector.select(connectTimeout) == 0) { // Block until something happens
-                return null;
+            selector.select(connectTimeout);
+            //select returns number of updates, but the select in the initConnections might have
+            //already produced a result, therefore testing here for selected keys.
+            final Set<SelectionKey> keys = selector.selectedKeys();
+            if (keys.isEmpty()) return null;
+
+            if (preferred != null && keys.contains(preferred)) {
+                if (preferred.isValid() && preferred.isConnectable()) {
+                    SelectionKey key = tryFinishConnect(preferred);
+                    if (key != null) {
+                        return key;
+                    }
+                }
+                keys.remove(preferred);
             }
 
-            Iterator<SelectionKey> it = selector.selectedKeys().iterator();
+            final Iterator<SelectionKey> it = keys.iterator();
             while (it.hasNext()) {
                 SelectionKey key = it.next();
                 if (key.isValid() && key.isConnectable()) {
-                    SocketChannel channel = (SocketChannel) key.channel();
-                    try {
-                        if (channel.finishConnect()) {
-                            return key;
-                        }
-                    } catch (Exception e) {
-                        key.cancel();
-                        closeQuietly(channel);
-
-                        log.trace("Error connecting socket channel: {}",
-                                e);
-                    }
+                    key = tryFinishConnect(key);
+                    if (key != null) return key;
                 }
-
                 it.remove();
             }
         }
@@ -128,35 +127,51 @@ class FastestSocketSelector {
         return null;
     }
 
-    private SocketInfo initConnections(Selector selector) throws IOException {
-        log.trace("initConnections()");
+    private SelectionKey tryFinishConnect(SelectionKey key) {
+        SocketChannel channel = (SocketChannel) key.channel();
+        try {
+            if (channel.finishConnect()) {
+                return key;
+            }
+        } catch (Exception e) {
+            key.cancel();
+            closeQuietly(channel);
+            log.trace("Error connecting socket channel: ", e);
+        }
+        return null;
+    }
 
+    private static final int PREFERRED_TIMEOUT_MS = 10;
+    private SelectionKey initConnections(Selector selector) throws IOException {
+        log.trace("initConnections()");
+        boolean first = true;
+        SelectionKey preferred = null;
         for (URI target : addresses) {
             SocketChannel channel = SocketChannel.open();
             channel.setOption(StandardSocketOptions.TCP_NODELAY, true);
             channel.configureBlocking(false);
             try {
-                channel.register(selector, SelectionKey.OP_CONNECT, target);
-
-                if (channel.connect(new InetSocketAddress(target.getHost(),
-                        target.getPort()))) { // connected immediately
-                    channel.configureBlocking(true);
-                    return new SocketInfo(target, channel.socket());
+                final SelectionKey key = channel.register(selector, SelectionKey.OP_CONNECT, target);
+                channel.connect(new InetSocketAddress(target.getHost(), target.getPort()));
+                if (first) {
+                    //prefer the first one by giving it some extra time to answer
+                    selector.select(PREFERRED_TIMEOUT_MS);
+                    preferred = key;
                 }
             } catch (Exception e) {
                 closeQuietly(channel);
                 log.trace("Error connecting to '{}': {}", target, e);
+            } finally {
+                first = false;
             }
         }
-
-        return null;
+        return preferred;
     }
 
     private static void closeSelector(Selector selector,
             SocketChannel selectedChannel) throws IOException {
         for (SelectionKey key : selector.keys()) {
-            if (selectedChannel == null
-                    || !selectedChannel.equals(key.channel())) {
+            if (selectedChannel == null || !selectedChannel.equals(key.channel())) {
                 closeQuietly(key.channel());
             }
         }

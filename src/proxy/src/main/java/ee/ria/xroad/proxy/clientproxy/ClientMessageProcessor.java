@@ -55,6 +55,7 @@ import ee.ria.xroad.proxy.protocol.ProxyMessage;
 import ee.ria.xroad.proxy.protocol.ProxyMessageDecoder;
 import ee.ria.xroad.proxy.protocol.ProxyMessageEncoder;
 import ee.ria.xroad.proxy.util.MessageProcessorBase;
+
 import lombok.EqualsAndHashCode;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +70,7 @@ import org.xml.sax.helpers.AttributesImpl;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.namespace.QName;
+
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -88,7 +90,14 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-import static ee.ria.xroad.common.ErrorCodes.*;
+import static ee.ria.xroad.common.ErrorCodes.X_INCONSISTENT_RESPONSE;
+import static ee.ria.xroad.common.ErrorCodes.X_INTERNAL_ERROR;
+import static ee.ria.xroad.common.ErrorCodes.X_INVALID_SECURITY_SERVER;
+import static ee.ria.xroad.common.ErrorCodes.X_MISSING_SIGNATURE;
+import static ee.ria.xroad.common.ErrorCodes.X_MISSING_SOAP;
+import static ee.ria.xroad.common.ErrorCodes.X_SERVICE_FAILED_X;
+import static ee.ria.xroad.common.ErrorCodes.X_UNKNOWN_MEMBER;
+import static ee.ria.xroad.common.ErrorCodes.translateException;
 import static ee.ria.xroad.common.SystemProperties.getServerProxyPort;
 import static ee.ria.xroad.common.SystemProperties.isSslEnabled;
 import static ee.ria.xroad.common.util.AbstractHttpSender.CHUNKED_LENGTH;
@@ -130,23 +139,33 @@ class ClientMessageProcessor extends MessageProcessorBase {
      */
     private final IsAuthenticationData clientCert;
 
-    /** Holds the incoming request SOAP message. */
+    /**
+     * Holds the incoming request SOAP message.
+     */
     private volatile String originalSoapAction;
     private volatile SoapMessageImpl requestSoap;
     private volatile ServiceId requestServiceId;
 
-    /** If the request failed, will contain SOAP fault. */
+    /**
+     * If the request failed, will contain SOAP fault.
+     */
     private volatile CodedException executionException;
 
-    /** Holds the proxy message output stream and associated info. */
+    /**
+     * Holds the proxy message output stream and associated info.
+     */
     private PipedInputStream reqIns;
     private volatile PipedOutputStream reqOuts;
     private volatile String outputContentType;
 
-    /** Holds the request to the server proxy. */
+    /**
+     * Holds the request to the server proxy.
+     */
     private ProxyMessageEncoder request;
 
-    /** Holds the response from server proxy. */
+    /**
+     * Holds the response from server proxy.
+     */
     private ProxyMessage response;
 
     //** Holds operational monitoring data. */
@@ -263,9 +282,11 @@ class ClientMessageProcessor extends MessageProcessorBase {
             // Start sending the request to server proxies. The underlying
             // SSLConnectionSocketFactory will select the fastest address
             // (socket that connects first) from the provided addresses.
-            // Dummy service address is only needed so that host name resolving
-            // could do its thing and start the ssl connection.
-            URI[] addresses = getServiceAddresses(requestServiceId, requestSoap.getSecurityServer());
+            List<URI> tmp = getServiceAddresses(requestServiceId, requestSoap.getSecurityServer());
+            Collections.shuffle(tmp);
+            // If there are more than 1 address, we will prefer the first one then selecting the fastest
+            // the randomization ensures that each address will be the preferred one
+            URI[] addresses = tmp.toArray(new URI[0]);
 
             updateOpMonitoringServiceSecurityServerAddress(addresses, httpSender);
 
@@ -294,7 +315,7 @@ class ClientMessageProcessor extends MessageProcessorBase {
             try {
                 opMonitoringData.setRequestOutTs(getEpochMillisecond());
 
-                httpSender.doPost(getDummyServiceAddress(addresses), reqIns, CHUNKED_LENGTH, outputContentType);
+                httpSender.doPost(addresses[0], reqIns, CHUNKED_LENGTH, outputContentType);
 
                 opMonitoringData.setResponseInTs(getEpochMillisecond());
             } catch (Exception e) {
@@ -538,16 +559,8 @@ class ClientMessageProcessor extends MessageProcessorBase {
         IsAuthentication.verifyClientAuthentication(sender, clientCert);
     }
 
-    private static URI getDummyServiceAddress(URI[] addresses) throws Exception {
-        if (!isSslEnabled()) {
-            // In non-ssl mode we just connect to the first address
-            return addresses[0];
-        }
-
-        return new URI("https", null, "localhost", getServerProxyPort(), "/", null, null);
-    }
-
-    private static URI[] getServiceAddresses(ServiceId serviceProvider, SecurityServerId serverId) throws Exception {
+    private static List<URI> getServiceAddresses(ServiceId serviceProvider, SecurityServerId serverId) throws
+            Exception {
         log.trace("getServiceAddresses({}, {})", serviceProvider, serverId);
 
         Collection<String> hostNames = GlobalConf.getProviderAddress(serviceProvider.getClientId());
@@ -580,7 +593,7 @@ class ClientMessageProcessor extends MessageProcessorBase {
             addresses.add(new URI(protocol, null, host, port, "/", null, null));
         }
 
-        return addresses.toArray(new URI[addresses.size()]);
+        return addresses;
     }
 
     private static String getHashAlgoId(HttpSender httpSender) {
@@ -604,7 +617,6 @@ class ClientMessageProcessor extends MessageProcessorBase {
             continueReadingResponse();
         }
     }
-
 
     private class SoapMessageHandler implements SoapMessageDecoder.Callback {
 

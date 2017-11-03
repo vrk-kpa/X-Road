@@ -22,15 +22,17 @@
  */
 package ee.ria.xroad.common.util;
 
-import java.io.InputStream;
-import java.net.URI;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class encapsulates the sending and receiving of content via HTTP POST
@@ -114,11 +116,15 @@ public class HttpSender extends AbstractHttpSender {
         try {
             HttpResponse response = client.execute(request, context);
             handleResponse(response);
+        } catch (IOException ioe) {
+            //TODO drop idle connections with matching route
+            log.debug("Connection failure ({}),  cleaning pool", ioe.getMessage());
+            client.getConnectionManager().closeIdleConnections(0, TimeUnit.MILLISECONDS);
+            request.abort();
+            throw ioe;
         } catch (Exception ex) {
             log.debug("Request failed", ex);
-
             request.abort();
-
             throw ex;
         }
     }
