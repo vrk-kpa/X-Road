@@ -28,6 +28,7 @@ if [[ ! -f $(basename $JETTY) || "$md5a" != "$md5b" ]]; then
     curl -sLO $JETTY
     md5 $(basename $JETTY) > jetty.md5
 fi
+rm -rf ${ROOT}/RPMS/*
 cd ..
 rpmbuild \
     --define "xroad_version 6.17.0" \
